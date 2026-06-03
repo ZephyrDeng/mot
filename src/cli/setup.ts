@@ -255,6 +255,7 @@ export function buildConfigFile(options: {
     'EXCLUDED_CHANNELS=',
     'MAX_ATTACHMENT_BYTES=26214400',
     'MAX_TOTAL_ATTACHMENT_BYTES=52428800',
+    'MEDIA_RETENTION_HOURS=168',
     '',
     '# Archive',
     'ARCHIVE_RETENTION_DAYS=30',

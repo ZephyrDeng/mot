@@ -42,7 +42,7 @@ That's it. The setup wizard checks prerequisites, asks for your Discord bot toke
 - **DM auto-registration** — direct messages work out of the box
 - **Discord slash commands** — `/pi status`, `/pi model`, `/pi thinking`, `/pi new`, `/pi stop`
 - **Abort command** — `/pi stop` terminates the running task and clears queued messages
-- **Attachment relay** — Discord file uploads are downloaded and passed to `pi` via `@file`
+- **Attachment relay** — Discord file uploads are downloaded and passed to `pi` by local path so agents can inspect or convert any supported file type without flooding context
 - **Message and file sending** — `piscord send` lets pi send plain text, files, or both to any Discord channel
 - **Scheduled tasks** — cron or one-time tasks that trigger pi sessions on schedule
 - **Archive auto-cleanup** — archived sessions are cleaned up after a configurable retention period
@@ -212,6 +212,7 @@ Most users won't need to edit this file directly — `piscord setup` generates i
 | `ARCHIVE_RETENTION_DAYS`     | `30`                            | Days to keep archived sessions (0 = never clean)                           |
 | `MAX_ATTACHMENT_BYTES`       | `26214400`                      | Max size per attachment (0 = no limit)                                     |
 | `MAX_TOTAL_ATTACHMENT_BYTES` | `52428800`                      | Max combined attachment size (0 = no limit)                                |
+| `MEDIA_RETENTION_HOURS`      | `168`                           | Hours to keep downloaded attachment files for path-based agent access       |
 | `SESSIONS_DIR`               | _(platform default)_/sessions   | Session storage directory (see Data Locations)                             |
 | `DB_PATH`                    | _(platform default)_/gateway.db | SQLite database path (see Data Locations)                                  |
 | `LOG_LEVEL`                  | `info`                          | Log level: debug/info/warn/error                                           |
@@ -342,6 +343,7 @@ MIT
 
 | Version | Date       | Changes                                                    |
 | ------- | ---------- | ---------------------------------------------------------- |
+| 1.6.0   | 2026-06-15 | Path-based attachment relay and clearer empty-output errors |
 | 1.5.3   | 2026-05-19 | Fix ESM peer-dep check, cross-platform test fixes          |
 | 1.5.1   | 2026-05-15 | Startup check for legacy `@mariozechner/pi-ai` package     |
 | 1.5.0   | 2026-05-15 | Cross-platform support (macOS, Windows), launchd, new deps |

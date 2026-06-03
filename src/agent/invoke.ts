@@ -4,7 +4,7 @@ import { dirname, resolve as pathResolve } from 'node:path';
 import { type AttachmentMeta } from '../discord/attachments.js';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
-import { downloadAttachments } from '../session/media.js';
+import { type DownloadedFile, downloadAttachments } from '../session/media.js';
 import {
   readSessionCreatedAt,
   resolveChannelSessionDir,
@@ -72,17 +72,22 @@ export async function invokeAgent(
     args.push(...config.piExtraFlags.split(/\s+/).filter(Boolean));
   }
 
-  // Download attachments and pass as @file args (pi handles all types natively)
+  let attachmentPrompt = '';
+
+  // Download attachments to disk and pass *paths* to the agent instead of using
+  // `@file` arguments. `@file` eagerly injects file contents into the model
+  // request; that is convenient for small text files but unsafe for binary or
+  // structured files (docx/xlsx/pdf/images) because it can flood the context
+  // window with raw bytes. Path-based handoff keeps the prompt small and lets
+  // pi decide which tools/converters to use for each file type.
   if (opts?.attachments) {
     try {
       const metas: AttachmentMeta[] = JSON.parse(opts.attachments);
       const messageId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       const downloaded = await downloadAttachments(metas, channelFolder, messageId, opts.signal);
-      for (const file of downloaded) {
-        args.push(`@${file.filePath}`);
-      }
+      attachmentPrompt = buildAttachmentPathPrompt(downloaded);
       if (downloaded.length > 0) {
-        logger.info({ channelFolder, count: downloaded.length }, 'Attached files for pi');
+        logger.info({ channelFolder, count: downloaded.length }, 'Downloaded files for pi');
       }
     } catch (err: any) {
       logger.warn({ err: err.message }, 'Failed to process attachments');
@@ -98,7 +103,8 @@ export async function invokeAgent(
   }
 
   // Prompt (must be last)
-  args.push('-p', userText);
+  const prompt = attachmentPrompt ? `${userText}\n\n${attachmentPrompt}` : userText;
+  args.push('-p', prompt);
 
   const { bin: effectiveBin, args: effectiveArgs } = resolvePiSpawn(config.piBin, args);
 
@@ -148,7 +154,20 @@ export async function invokeAgent(
         return;
       }
 
-      resolve({ ok: true, text: stdout || '(empty response)' });
+      if (!stdout) {
+        const sessionError = readLatestAgentErrorFromSession(channelFolder);
+        resolve({
+          ok: false,
+          text: '',
+          error:
+            sessionError ||
+            stderr.slice(0, 600) ||
+            'pi completed without producing a response (empty stdout)',
+        });
+        return;
+      }
+
+      resolve({ ok: true, text: stdout });
     });
 
     proc.on('error', (err) => {
@@ -156,6 +175,95 @@ export async function invokeAgent(
       reject(err);
     });
   });
+}
+
+export function buildAttachmentPathPrompt(downloaded: DownloadedFile[]): string {
+  if (downloaded.length === 0) return '';
+
+  const lines = downloaded.map((file, index) => {
+    const label = downloaded.length === 1 ? 'file' : `file ${index + 1}`;
+    return [
+      `- ${label}: ${file.originalName}`,
+      `  path: ${file.filePath}`,
+      `  type: ${file.contentType || 'application/octet-stream'}`,
+      `  size: ${file.size} bytes`,
+    ].join('\n');
+  });
+
+  return [
+    '<attachments>',
+    'The user attached local files. They are already downloaded on this machine.',
+    'Do not assume their contents are loaded into context. Use tools to inspect or convert these paths when needed.',
+    ...lines,
+    '</attachments>',
+  ].join('\n');
+}
+
+function readLatestAgentErrorFromSession(channelFolder: string): string | undefined {
+  const sessionFile = resolveLatestChannelSessionFile(channelFolder);
+  if (!sessionFile || !existsSync(sessionFile)) return undefined;
+
+  let lines: string[];
+  try {
+    lines = readFileSync(sessionFile, 'utf-8').split(/\r?\n/u);
+  } catch {
+    return undefined;
+  }
+
+  for (let index = lines.length - 1; index >= 0; index--) {
+    const line = lines[index]?.trim();
+    if (!line) continue;
+
+    try {
+      const entry = JSON.parse(line) as {
+        type?: string;
+        message?: {
+          role?: string;
+          content?: unknown;
+          stopReason?: string;
+          errorMessage?: string;
+        };
+      };
+
+      if (entry.type !== 'message' || entry.message?.role !== 'assistant') continue;
+
+      if (entry.message.errorMessage) {
+        return summarizeAgentError(entry.message.errorMessage);
+      }
+
+      if (entry.message.stopReason === 'error') {
+        return 'pi stopped with an error but did not record an error message';
+      }
+
+      // The newest assistant message was not an error; older errors are not the
+      // cause of the empty stdout for this invocation.
+      return undefined;
+    } catch {
+      // Ignore incomplete or malformed trailing JSONL lines.
+    }
+  }
+
+  return undefined;
+}
+
+function summarizeAgentError(errorMessage: string): string {
+  const codexJson = errorMessage.match(/Codex error:\s*(\{.*\})/su)?.[1];
+  if (codexJson) {
+    try {
+      const parsed = JSON.parse(codexJson) as {
+        error?: { type?: string; code?: string; message?: string };
+      };
+      const error = parsed.error;
+      if (error?.message) {
+        const code = error.code || error.type;
+        return code ? `${code}: ${error.message}` : error.message;
+      }
+    } catch {
+      // Fall back to the original error message below.
+    }
+  }
+
+  return errorMessage;
 }
 
 export async function getChannelSessionStatus(

@@ -151,6 +151,9 @@ export const config = {
   /** Days to retain archived sessions (0 = never clean) */
   archiveRetentionDays: envInt('ARCHIVE_RETENTION_DAYS', 30, { min: 0 }),
 
+  /** Hours to retain downloaded attachment media for path-based agent access */
+  mediaRetentionHours: envInt('MEDIA_RETENTION_HOURS', 24 * 7, { min: 1 }),
+
   /** SQLite database path */
   dbPath: env('DB_PATH', resolve(DEFAULT_DATA_DIR, 'gateway.db')),
 

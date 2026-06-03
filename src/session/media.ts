@@ -21,13 +21,16 @@ export interface DownloadedFile {
   filePath: string;
   originalName: string;
   size: number;
+  contentType: string;
 }
 
 /** Download timeout per file (30s) */
 const DOWNLOAD_TIMEOUT_MS = 30_000;
 
-/** Media TTL before cleanup (1 hour) */
-const MEDIA_TTL_MS = 60 * 60 * 1000;
+/** Convert configured media retention to milliseconds. */
+function mediaTtlMs(): number {
+  return config.mediaRetentionHours * 60 * 60 * 1000;
+}
 
 /**
  * Download all attachments to a per-message directory under the channel session.
@@ -55,7 +58,12 @@ export async function downloadAttachments(
       await streamAttachmentToFile(att, filePath, signal);
       const fileStats = await stat(filePath);
 
-      results.push({ filePath, originalName: att.name || 'file', size: fileStats.size });
+      results.push({
+        filePath,
+        originalName: att.name || 'file',
+        size: fileStats.size,
+        contentType: att.contentType || 'application/octet-stream',
+      });
       logger.debug(
         { name: att.name, size: fileStats.size, path: filePath },
         'Attachment downloaded',
@@ -115,6 +123,7 @@ export function startMediaCleanup(): () => void {
 /** Remove media directories older than MEDIA_TTL_MS */
 function cleanupExpiredMedia(): void {
   const now = Date.now();
+  const ttlMs = mediaTtlMs();
   let cleaned = 0;
 
   for (const mediaRoot of findMediaRoots(config.sessionsDir)) {
@@ -126,7 +135,7 @@ function cleanupExpiredMedia(): void {
         const dirPath = join(mediaRoot, msgDir.name);
         try {
           const st = statSync(dirPath);
-          if (now - st.mtimeMs > MEDIA_TTL_MS) {
+          if (now - st.mtimeMs > ttlMs) {
             rmSync(dirPath, { recursive: true, force: true });
             cleaned++;
           }

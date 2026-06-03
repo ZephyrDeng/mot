@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2026-06-15
+
+### Changed
+
+- Discord attachments are now passed to `pi` by local file path instead of being injected with `@file`. This keeps binary and structured files such as DOCX, XLSX, PDFs, and images out of the model context while still letting the agent inspect or convert them with tools.
+- Downloaded attachment media is retained for a configurable period so path-based agent workflows can continue after the initial message. New config: `MEDIA_RETENTION_HOURS` (default: `168`, one week).
+
+### Fixed
+
+- Empty stdout from `pi` no longer becomes an unhelpful `(empty response)` Discord reply. piscord now reports the recorded agent/session error when available, including context-window errors such as `context_length_exceeded`.
+- Prevent large or binary attachments from flooding the model context and causing repeated empty responses in the affected channel session.
+
 ## [1.5.3] - 2026-05-19
 
 ### Fixed
