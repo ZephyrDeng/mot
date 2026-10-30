@@ -255,6 +255,28 @@ const SEND_INTERVAL_MS = 1000;
 /** channelId → next allowed outbound send time (epoch ms) */
 const nextSendAt = new Map<string, number>();
 
+/**
+ * Native Slack loading indicator ("Mot is running bash…") on a thread.
+ * Creates no message, so it can never duplicate the reply; an empty status
+ * clears it. Best-effort: never throws.
+ */
+export async function setThreadStatus(
+  jid: string,
+  threadTs: string | undefined,
+  status: string,
+): Promise<void> {
+  if (!app || !threadTs) return;
+  try {
+    await app.client.assistant.threads.setStatus({
+      channel_id: jid.replace(/^sl:/, ''),
+      thread_ts: threadTs,
+      status: status.slice(0, 100),
+    });
+  } catch (err: any) {
+    logger.debug({ jid, err: err.message }, 'Thread status update failed');
+  }
+}
+
 export async function sendResponse(
   jid: string,
   text: string,
@@ -315,37 +337,6 @@ export async function sendFiles(
   } catch (err: any) {
     logger.error({ jid, err: err.message }, 'Failed to upload files');
     return false;
-  }
-}
-
-const BUSY_REACTION = 'hourglass_flowing_sand';
-
-/**
- * Busy indicator: Slack has no bot typing indicator, so react to the
- * triggering message instead. No-ops when there is no message ts (scheduler
- * runs) and never rejects — a missing reactions:write scope must not break
- * the processing pipeline.
- */
-export async function setBusy(jid: string, on: boolean, ctx?: { ts?: string }): Promise<void> {
-  if (!app || !ctx?.ts) return;
-
-  const channelId = jid.replace(/^sl:/, '');
-  try {
-    if (on) {
-      await app.client.reactions.add({
-        channel: channelId,
-        timestamp: ctx.ts,
-        name: BUSY_REACTION,
-      });
-    } else {
-      await app.client.reactions.remove({
-        channel: channelId,
-        timestamp: ctx.ts,
-        name: BUSY_REACTION,
-      });
-    }
-  } catch (err: any) {
-    logger.debug({ jid, err: err.message }, 'Busy reaction update failed');
   }
 }
 

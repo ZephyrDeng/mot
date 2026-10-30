@@ -25,11 +25,11 @@ export interface PlatformAdapter {
   sendResponse(jid: string, text: string, ctx?: { threadTs?: string }): Promise<boolean>;
 
   /**
-   * Toggle a "working on it" indicator. `ctx.ts` is the triggering message ts
-   * so implementations without a typing indicator (Slack) can react to the
-   * message instead. Best-effort: implementations must never reject.
+   * Show a native "working on it" status on a thread (Slack:
+   * assistant.threads.setStatus). Empty status clears it. Best-effort:
+   * implementations must never reject.
    */
-  setBusy(jid: string, on: boolean, ctx?: { ts?: string }): Promise<void>;
+  setThreadStatus(jid: string, threadTs: string | undefined, status: string): Promise<void>;
 
   /**
    * Upload local files to a channel as native attachments (used when agent

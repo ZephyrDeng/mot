@@ -3,10 +3,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const { invokeAgentMock, sendResponseMock, setBusyMock } = vi.hoisted(() => ({
+const { invokeAgentMock, sendResponseMock, setThreadStatusMock } = vi.hoisted(() => ({
   invokeAgentMock: vi.fn(),
   sendResponseMock: vi.fn(),
-  setBusyMock: vi.fn(),
+  setThreadStatusMock: vi.fn(),
 }));
 
 vi.mock('../src/agent/invoke.js', () => ({
@@ -15,7 +15,7 @@ vi.mock('../src/agent/invoke.js', () => ({
 
 vi.mock('../src/slack/client.js', () => ({
   sendResponse: sendResponseMock,
-  setBusy: setBusyMock,
+  setThreadStatus: setThreadStatusMock,
 }));
 
 const originalEnv = { ...process.env };
@@ -57,14 +57,14 @@ describe('queue cwd selection', () => {
     expect(call?.cwd).toBe('/global/project');
   });
 
-  it('passes thread context to sendResponse and toggles the busy indicator', async () => {
+  it('passes thread context to sendResponse and sets then clears the thread status', async () => {
     await runQueuedMessage('');
 
     expect(sendResponseMock).toHaveBeenCalledWith('sl:C123', 'done', {
       threadTs: '1751954000.000100',
     });
-    expect(setBusyMock).toHaveBeenNthCalledWith(1, 'sl:C123', true, { ts: '1751955000.000100' });
-    expect(setBusyMock).toHaveBeenNthCalledWith(2, 'sl:C123', false, { ts: '1751955000.000100' });
+    expect(setThreadStatusMock).toHaveBeenNthCalledWith(1, 'sl:C123', '1751954000.000100', 'is thinking…');
+    expect(setThreadStatusMock).toHaveBeenLastCalledWith('sl:C123', '1751954000.000100', '');
   });
 });
 
@@ -80,7 +80,7 @@ async function runQueuedMessage(cwdOverride: string): Promise<{ cwd?: string } |
 
   invokeAgentMock.mockResolvedValue({ ok: true, text: 'done' });
   sendResponseMock.mockResolvedValue(true);
-  setBusyMock.mockResolvedValue(undefined);
+  setThreadStatusMock.mockResolvedValue(undefined);
 
   vi.resetModules();
   const db = await import('../src/db.js');

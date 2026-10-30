@@ -38,7 +38,7 @@ The app uses Socket Mode: the gateway opens an outbound WebSocket, so no public 
 - **DMs** — every message reaches pi (default `DM_POLICY=open`). Great from the Slack mobile app: kick off a task from your phone, get the result when it's done.
 - **Channels** — register a channel and pi joins the conversation. In trigger-gated channels, summon it by @mentioning the bot or starting your message with its trigger name: `@pi fix the build` and `pi fix the build` both work (`TRIGGER_NAME`, matched only at the start of a message).
 - **Threads** — trigger pi inside a thread and the answer lands in that thread (`REPLY_IN_THREAD=true` by default). Threads share the channel's session; they're a reply location, not a separate conversation.
-- While pi works, your message gets an hourglass reaction; long answers are posted as Markdown and split at Slack's 4,000-character limit.
+- While pi works, the thread shows Slack's native status ("Mot is running bash…"); long answers are posted as Markdown and split at Slack's 4,000-character limit.
 - Summoning the bot in an unregistered channel gets a short registration hint instead of silence (rate-limited to once per 10 minutes per channel).
 
 ## The `/pi` panel

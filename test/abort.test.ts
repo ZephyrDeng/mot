@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../src/slack/client.js', () => ({
   sendResponse: vi.fn().mockResolvedValue(true),
-  setBusy: vi.fn().mockResolvedValue(undefined),
+  setThreadStatus: vi.fn().mockResolvedValue(undefined),
 }));
 
 const originalDbPath = process.env.DB_PATH;

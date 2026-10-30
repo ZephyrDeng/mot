@@ -21,8 +21,8 @@ import {
 import type { QueuedMessage } from '../types.js';
 import { statSync } from 'node:fs';
 import { basename } from 'node:path';
-import { invokeAgent } from './invoke.js';
-import { sendFiles, sendResponse, setBusy } from '../slack/client.js';
+import { invokeAgent, type ProgressEvent } from './invoke.js';
+import { sendFiles, sendResponse, setThreadStatus } from '../slack/client.js';
 import { extractFileUris } from '../slack/text.js';
 import { computeEffectiveChannelSettings } from './channel-settings.js';
 
@@ -209,13 +209,65 @@ async function processMessage(jid: string, msg: QueuedMessage, signal: AbortSign
 
   logger.info({ jid, senderName, len: content.length }, 'Processing message');
 
-  // Slack has no bot typing indicator; flag the triggering message with a busy
-  // reaction instead. No-op when the message has no ts (e.g. scheduler runs).
-  const busyCtx = { ts: msg.event_ts ?? undefined };
-  await setBusy(jid, true, busyCtx);
-
   // Reply into the triggering message's thread when it lived in one.
   const replyCtx = { threadTs: msg.thread_ts ?? undefined };
+
+  // Live progress via Slack's native thread status ("Mot is running bash…").
+  // It creates no message, so it can't duplicate the final reply. Updates are
+  // throttled; only the latest status is sent.
+  const statusThreadTs = msg.thread_ts ?? msg.event_ts ?? undefined;
+  const STATUS_MIN_INTERVAL_MS = 2000;
+  let lastStatus = '';
+  let pendingStatus = '';
+  let lastStatusAt = 0;
+  let statusTimer: ReturnType<typeof setTimeout> | undefined;
+  let finished = false;
+
+  const pushStatus = (status: string) => {
+    if (finished || signal.aborted || status === lastStatus) return;
+    pendingStatus = status;
+    if (statusTimer) return;
+    const wait = Math.max(0, STATUS_MIN_INTERVAL_MS - (Date.now() - lastStatusAt));
+    statusTimer = setTimeout(() => {
+      statusTimer = undefined;
+      if (finished || pendingStatus === lastStatus) return;
+      lastStatus = pendingStatus;
+      lastStatusAt = Date.now();
+      void setThreadStatus(jid, statusThreadTs, lastStatus);
+    }, wait);
+  };
+
+  const onProgress = (event: ProgressEvent) => {
+    if (event.kind === 'tool_start') {
+      const args = event.args ? `: ${event.args.slice(0, 60)}` : '';
+      pushStatus(`is running ${event.tool}${args}`);
+    } else if (event.kind === 'text') {
+      pushStatus('is writing a reply…');
+    } else if (event.kind === 'thinking') {
+      pushStatus('is thinking…');
+    }
+  };
+
+  // Slack drops the status after ~2 min without a message; re-send it so long
+  // tool runs keep showing "working".
+  const STATUS_KEEPALIVE_MS = 90_000;
+  const keepalive = setInterval(() => {
+    if (finished || signal.aborted) return;
+    lastStatusAt = Date.now();
+    void setThreadStatus(jid, statusThreadTs, lastStatus);
+  }, STATUS_KEEPALIVE_MS);
+
+  const clearStatus = async () => {
+    finished = true;
+    clearInterval(keepalive);
+    if (statusTimer) clearTimeout(statusTimer);
+    statusTimer = undefined;
+    await setThreadStatus(jid, statusThreadTs, '');
+  };
+
+  void setThreadStatus(jid, statusThreadTs, 'is thinking…');
+  lastStatus = 'is thinking…';
+  lastStatusAt = Date.now();
 
   try {
     const prompt =
@@ -234,7 +286,10 @@ async function processMessage(jid: string, msg: QueuedMessage, signal: AbortSign
       cwd: effective.effectiveCwd,
       signal,
       attachments: msg.attachments,
+      onProgress,
     });
+
+    await clearStatus();
 
     if (signal.aborted) {
       safeMarkMessageFailed(jid, rowid);
@@ -305,7 +360,7 @@ async function processMessage(jid: string, msg: QueuedMessage, signal: AbortSign
       // Nothing else to do here.
     }
   } finally {
-    await setBusy(jid, false, busyCtx);
+    if (!finished) await clearStatus();
   }
 }
 

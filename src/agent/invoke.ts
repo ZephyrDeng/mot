@@ -40,6 +40,18 @@ export interface ChannelSessionStatus {
  * Each channel gets its own session directory so conversation history persists.
  * Uses `pi --session-dir <dir> --continue -p <message>` (print mode, no TUI).
  */
+export interface ProgressEvent {
+  kind: 'tool_start' | 'tool_end' | 'text' | 'thinking';
+  /** tool name for tool_start/tool_end */
+  tool?: string;
+  /** brief args preview for tool_start (e.g. command, file path) */
+  args?: string;
+  /** accumulated assistant text so far for 'text' events */
+  text?: string;
+}
+
+export type ProgressCallback = (event: ProgressEvent) => void;
+
 export async function invokeAgent(
   channelFolder: string,
   userText: string,
@@ -49,6 +61,7 @@ export async function invokeAgent(
     cwd?: string;
     signal?: AbortSignal;
     attachments?: string | null;
+    onProgress?: ProgressCallback;
   },
 ): Promise<AgentResult> {
   const sessionDir = resolveChannelSessionDir(channelFolder);
@@ -57,7 +70,7 @@ export async function invokeAgent(
 
   // `--session` expects a session *file* path. We want a dedicated directory per
   // Slack channel and to keep reusing the most recent session inside it.
-  const args: string[] = ['--session-dir', sessionDir, '--continue'];
+  const args: string[] = ['--session-dir', sessionDir, '--continue', '--mode', 'json'];
 
   // Model
   const model = opts?.model || config.piModel;
@@ -120,10 +133,65 @@ export async function invokeAgent(
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    const chunks: Buffer[] = [];
     const errChunks: Buffer[] = [];
+    let stdoutBuf = '';
+    let assistantText = '';           // accumulated text for current assistant turn
+    const finalTexts: string[] = [];  // every assistant message's text, in order
 
-    proc.stdout.on('data', (c: Buffer) => chunks.push(c));
+    const emit = (event: ProgressEvent) => {
+      try { opts?.onProgress?.(event); } catch { /* progress is best-effort */ }
+    };
+
+    const briefArgs = (tool: string, args: unknown): string => {
+      if (!args || typeof args !== 'object') return '';
+      const a = args as Record<string, unknown>;
+      const pick = (k: string) => (typeof a[k] === 'string' ? String(a[k]).slice(0, 80) : '');
+      if (tool === 'bash') return pick('command');
+      if (tool === 'read' || tool === 'write' || tool === 'edit') return pick('path');
+      if (tool === 'synthetic_web_search') return pick('query');
+      return pick('path') || pick('command') || pick('query') || '';
+    };
+
+    const handleLine = (line: string) => {
+      let msg: any;
+      try { msg = JSON.parse(line); } catch { return; }
+      const type = msg?.type;
+      if (type === 'tool_execution_start') {
+        emit({ kind: 'tool_start', tool: msg.toolName, args: briefArgs(msg.toolName, msg.args) });
+      } else if (type === 'tool_execution_end') {
+        const isErr = msg?.result?.isError === true;
+        emit({ kind: 'tool_end', tool: msg.toolName, args: isErr ? 'error' : 'ok' });
+      } else if (type === 'message_update') {
+        const ev = msg?.assistantMessageEvent;
+        if (ev?.type === 'text_delta' && typeof ev.delta === 'string') {
+          assistantText += ev.delta;
+          emit({ kind: 'text', text: assistantText });
+        } else if (ev?.type === 'thinking_delta' && typeof ev.delta === 'string') {
+          emit({ kind: 'thinking' });
+        }
+      } else if (type === 'message_end') {
+        const m = msg?.message;
+        if (m?.role === 'assistant' && Array.isArray(m.content)) {
+          const text = m.content
+            .filter((c: any) => c?.type === 'text' && typeof c.text === 'string')
+            .map((c: any) => c.text)
+            .join('');
+          if (text) finalTexts.push(text);
+          assistantText = '';
+        }
+      }
+    };
+
+    proc.stdout.on('data', (chunk: Buffer) => {
+      stdoutBuf += chunk.toString('utf-8');
+      let nl = stdoutBuf.indexOf('\n');
+      while (nl !== -1) {
+        const line = stdoutBuf.slice(0, nl).trim();
+        stdoutBuf = stdoutBuf.slice(nl + 1);
+        if (line) handleLine(line);
+        nl = stdoutBuf.indexOf('\n');
+      }
+    });
     proc.stderr.on('data', (c: Buffer) => errChunks.push(c));
 
     // Abort support
@@ -141,8 +209,11 @@ export async function invokeAgent(
     }
 
     proc.on('close', (code) => {
-      const stdout = Buffer.concat(chunks).toString('utf-8').trim();
+      // flush any trailing partial line
+      const trailing = stdoutBuf.trim();
+      if (trailing) handleLine(trailing);
       const stderr = Buffer.concat(errChunks).toString('utf-8').trim();
+      const text = finalTexts.join('\n\n').trim();
 
       if (code !== 0) {
         logger.warn({ code, stderr: stderr.slice(0, 500), channelFolder }, 'pi exited with error');
@@ -154,7 +225,7 @@ export async function invokeAgent(
         return;
       }
 
-      if (!stdout) {
+      if (!text) {
         const sessionError = readLatestAgentErrorFromSession(channelFolder);
         resolve({
           ok: false,
@@ -162,12 +233,12 @@ export async function invokeAgent(
           error:
             sessionError ||
             stderr.slice(0, 600) ||
-            'pi completed without producing a response (empty stdout)',
+            'pi completed without producing a response (no assistant text in stream)',
         });
         return;
       }
 
-      resolve({ ok: true, text: stdout });
+      resolve({ ok: true, text });
     });
 
     proc.on('error', (err) => {
