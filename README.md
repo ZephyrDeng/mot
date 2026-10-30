@@ -58,6 +58,7 @@ Text subcommands still work for muscle memory:
 | `/pi thinking <lv>` | Set thinking level: off / minimal / low / medium / high / xhigh    |
 | `/pi new`           | Start a fresh session for this channel                             |
 | `/pi stop`          | Abort the current task and clear queued messages                   |
+| `/pi bind [dir]`    | Admins: register this channel with a working directory (name under `PROJECT_ROOTS`, absolute path, or the channel name by default) |
 
 The model list comes from your installed pi and honors its `enabledModels` scope, so it stays in sync as pi adds or removes models.
 
@@ -154,6 +155,8 @@ Run **exactly one** gateway instance per Slack app — Socket Mode load-balances
 | `PI_EXTRA_FLAGS`             | _(none)_                        | Extra flags passed to pi                                                   |
 | `TRIGGER_NAME`               | `pi`                            | Bot trigger name for summoning in channels                                 |
 | `CHANNEL_POLICY`             | `allowlist`                     | Channel access: `open`, `open-trigger`, or `allowlist`                     |
+| `PROJECT_ROOTS`              | `$HOME`                         | Comma-separated roots `/pi bind <name>` searches for `<root>/<name>`       |
+| `ADMIN_USERS`                | _(none)_                        | Comma-separated Slack user IDs allowed to run `/pi bind` (empty disables it) |
 | `EXCLUDED_CHANNELS`          | _(none)_                        | Comma-separated channel IDs to exclude from auto-registration              |
 | `DM_POLICY`                  | `open`                          | DM access: `open`, `allowlist`, or `disabled`                              |
 | `REPLY_IN_THREAD`            | `true`                          | Post responses into the triggering message's thread when it has one        |

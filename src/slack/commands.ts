@@ -3,7 +3,7 @@
  *
  * Slack has no per-command autocomplete or typed subcommands, so a single
  * global /pi command carries text subcommands:
- *   status | model <ref> | models | reset-model | thinking <level> | new | stop
+ *   status | model <ref> | models | reset-model | thinking <level> | new | stop | bind [name|path]
  * A bare `/pi` opens an interactive panel (model/thinking pickers, new-session
  * and stop buttons) instead of a text usage dump; `/pi help` prints the text
  * usage. Replies are ephemeral (respond() posts to the response_url).
@@ -50,6 +50,7 @@ import {
   type EffectiveChannelSettings,
 } from '../agent/channel-settings.js';
 import { abortChannelTask, isChannelProcessing } from '../agent/queue.js';
+import { resolveBindTarget } from './bind.js';
 import { rotateChannelSessionDir } from '../session/path.js';
 import { THINKING_LEVELS, type RegisteredChannel, type ThinkingLevel } from '../types.js';
 
@@ -83,6 +84,9 @@ export function registerCommands(app: App): void {
           return;
         case 'stop':
           await handleStop(command, respond);
+          return;
+        case 'bind':
+          await handleBind(command, respond, args.join(' '));
           return;
         case '':
           await handlePanel(command, respond);
@@ -227,7 +231,46 @@ function usageMessage(): string {
     `• \`thinking <level>\` — set thinking level (${THINKING_LEVELS.join('|')})`,
     '• `new` — start a fresh pi session for this channel',
     '• `stop` — abort the current task and clear the queue',
+    '• `bind [name|path]` — register this channel and set its working directory (admins only)',
   ].join('\n');
+}
+
+async function handleBind(command: SlashCommand, respond: RespondFn, input: string): Promise<void> {
+  if (!config.adminUsers.has(command.user_id)) {
+    await respond(
+      `⛔ \`/pi bind\` is limited to gateway admins. Add your user ID (\`${command.user_id}\`) to \`ADMIN_USERS\` in the gateway config.`,
+    );
+    return;
+  }
+
+  const target = resolveBindTarget(input, command.channel_name, config.projectRoots);
+  if (!target.ok) {
+    const lines = {
+      invalid: 'Use a bare directory name (letters, digits, `.`, `_`, `-`) or an absolute / `~/` path.',
+      missing: `No directory found. Searched:\n${target.candidates.map((c) => `• \`${c}\``).join('\n')}`,
+      ambiguous: `Several matches — pass the full path:\n${target.candidates.map((c) => `• \`${c}\``).join('\n')}`,
+    };
+    await respond(`⚠️ ${lines[target.reason]}`);
+    return;
+  }
+
+  const jid = `sl:${command.channel_id}`;
+  const existing = getChannel(jid);
+  const isDm = command.channel_id.startsWith('D');
+  registerChannel({
+    jid,
+    name: existing?.name ?? (isDm ? `DM:${command.user_name}` : command.channel_name),
+    folder: existing?.folder ?? (isDm ? `dm_${command.user_id}` : `ch_${command.channel_id}`),
+    requiresTrigger: existing?.requiresTrigger ?? !isDm,
+    isMain: existing?.isMain ?? false,
+    modelOverride: existing?.modelOverride ?? '',
+    thinkingOverride: existing?.thinkingOverride ?? '',
+    cwdOverride: target.cwd,
+  });
+  logger.info({ jid, cwd: target.cwd, by: command.user_id }, 'Channel bound via /pi bind');
+
+  const note = existing ? '' : ' Mention the bot to start a session.';
+  await respond(`✅ Bound to \`${target.cwd}\`.${note} Takes effect on the next message.`);
 }
 
 async function handleNew(command: SlashCommand, respond: RespondFn): Promise<void> {
@@ -465,7 +508,7 @@ function ensureManagedChannel(command: SlashCommand): RegisteredChannel | undefi
 }
 
 function notRegisteredMessage(): string {
-  return 'This channel is not registered yet. Send a regular message in this channel first — the gateway will auto-register it (if channel policy is `open` or `open-trigger`).';
+  return 'This channel is not registered yet. An admin can run `/pi bind <dir>` here, or send a regular message first — the gateway auto-registers it when channel policy is `open` or `open-trigger`.';
 }
 
 function formatModelList(lines: string[]): string {

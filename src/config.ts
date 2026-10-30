@@ -200,6 +200,20 @@ export const config = {
   /** Channel access policy: open, open-trigger, or allowlist */
   channelPolicy: parseChannelPolicy(env('CHANNEL_POLICY', 'allowlist')),
 
+  /** Roots searched by `/pi bind <name>` (comma-separated, `~` allowed) */
+  projectRoots: env('PROJECT_ROOTS', homedir())
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+
+  /** Slack user IDs allowed to run `/pi bind` (empty disables it) */
+  adminUsers: new Set(
+    env('ADMIN_USERS')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  ),
+
   /** Comma-separated channel IDs to exclude from auto-registration */
   excludedChannels: new Set(
     env('EXCLUDED_CHANNELS')
