@@ -19,7 +19,7 @@ describe('buildAttachmentPathPrompt', () => {
       },
     ];
 
-    const prompt = buildAttachmentPathPrompt(files);
+    const prompt = buildAttachmentPathPrompt(files.map((file) => ({ file })));
 
     expect(prompt).toContain('<attachments>');
     expect(prompt).toContain('path: /tmp/session/media/report.docx');
@@ -29,5 +29,21 @@ describe('buildAttachmentPathPrompt', () => {
     expect(prompt).toContain('size: 67890 bytes');
     expect(prompt).toContain('Use tools to inspect or convert these paths');
     expect(prompt).not.toContain('@/tmp/session/media/report.docx');
+  });
+
+  it('embeds a transcript for audio attachments', () => {
+    const prompt = buildAttachmentPathPrompt([
+      {
+        file: {
+          filePath: '/tmp/session/media/voice.m4a',
+          originalName: 'voice.m4a',
+          contentType: 'audio/x-m4a',
+          size: 2200,
+        },
+        transcript: '帮我查一下这周收入',
+      },
+    ]);
+
+    expect(prompt).toContain('transcript: 帮我查一下这周收入');
   });
 });

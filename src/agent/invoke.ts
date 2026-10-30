@@ -4,6 +4,7 @@ import { type AttachmentMeta } from '../types.js';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
 import { type DownloadedFile, downloadAttachments } from '../session/media.js';
+import { transcribeAudio } from './transcribe.js';
 import {
   readSessionCreatedAt,
   resolveChannelSessionDir,
@@ -98,7 +99,11 @@ export async function invokeAgent(
       const metas: AttachmentMeta[] = JSON.parse(opts.attachments);
       const messageId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       const downloaded = await downloadAttachments(metas, channelFolder, messageId, opts.signal);
-      attachmentPrompt = buildAttachmentPathPrompt(downloaded);
+      attachmentPrompt = buildAttachmentPathPrompt(
+        await Promise.all(
+          downloaded.map(async (file) => ({ file, transcript: await transcribeAudio(file) })),
+        ),
+      );
       if (downloaded.length > 0) {
         logger.info({ channelFolder, count: downloaded.length }, 'Downloaded files for pi');
       }
@@ -248,17 +253,23 @@ export async function invokeAgent(
   });
 }
 
-export function buildAttachmentPathPrompt(downloaded: DownloadedFile[]): string {
-  if (downloaded.length === 0) return '';
+export function buildAttachmentPathPrompt(
+  attachments: Array<{ file: DownloadedFile; transcript?: string }>,
+): string {
+  if (attachments.length === 0) return '';
 
-  const lines = downloaded.map((file, index) => {
-    const label = downloaded.length === 1 ? 'file' : `file ${index + 1}`;
-    return [
+  const lines = attachments.map(({ file, transcript }, index) => {
+    const label = attachments.length === 1 ? 'file' : `file ${index + 1}`;
+    const header = [
       `- ${label}: ${file.originalName}`,
       `  path: ${file.filePath}`,
       `  type: ${file.contentType || 'application/octet-stream'}`,
       `  size: ${file.size} bytes`,
-    ].join('\n');
+    ];
+    // A transcript makes audio actionable: treat it as the message content,
+    // not just a blob on disk.
+    if (transcript) header.push(`  transcript: ${transcript}`);
+    return header.join('\n');
   });
 
   return [
