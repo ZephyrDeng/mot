@@ -1,13 +1,16 @@
 import { spawnSync } from 'node:child_process';
-import { AuthStorage, ModelRegistry, SettingsManager } from '@earendil-works/pi-coding-agent';
+import { SettingsManager } from '@earendil-works/pi-coding-agent';
+import * as PiCodingAgent from '@earendil-works/pi-coding-agent';
 import type { Model } from '@earendil-works/pi-ai';
 import { minimatch } from 'minimatch';
 import { config } from '../config.js';
+import { logger } from '../logger.js';
 import { THINKING_LEVELS, type ThinkingLevel } from '../types.js';
 import { supportsModelXhigh } from './pi-ai-compat.js';
 import { resolvePiSpawn } from './pi-spawn.js';
 
 const CACHE_TTL_MS = 30_000;
+const PI_LIST_MODELS_TIMEOUT_MS = 30_000;
 
 export interface AvailableModelInfo {
   ref: string;
@@ -282,13 +285,7 @@ function loadModelCatalog(forceRefresh: boolean, cwd: string, allowStale: boolea
     return cached;
   }
 
-  const authStorage = AuthStorage.create();
-  authStorage.reload();
-
-  const registry = createModelRegistry(authStorage);
-  registry.refresh();
-
-  const sdkModels = registry.getAvailable().map(toAvailableModelInfo);
+  const sdkModels = loadLegacySdkModels();
   const cliModels = listModelsFromPiCli(config.piBin, cwd);
   const models = mergeModelMetadata(cliModels ?? sdkModels, sdkModels).sort((a, b) =>
     a.ref.localeCompare(b.ref),
@@ -307,9 +304,23 @@ function listModelsFromPiCli(piBin: string, cwd: string): AvailableModelInfo[] |
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
     maxBuffer: 10 * 1024 * 1024,
+    timeout: PI_LIST_MODELS_TIMEOUT_MS,
+    killSignal: 'SIGKILL',
   });
 
   if (result.error || result.status !== 0 || !result.stdout) {
+    logger.warn(
+      {
+        bin,
+        cwd,
+        err: result.error?.message,
+        timedOut: (result.error as NodeJS.ErrnoException | undefined)?.code === 'ETIMEDOUT',
+        status: result.status,
+        signal: result.signal,
+        stderr: result.stderr?.toString().trim().slice(-500),
+      },
+      'pi --list-models failed',
+    );
     return undefined;
   }
 
@@ -368,17 +379,64 @@ function mergeModelMetadata(
   });
 }
 
-function createModelRegistry(authStorage: AuthStorage): ModelRegistry {
-  const registryClass = ModelRegistry as unknown as {
-    create?: (authStorage: AuthStorage) => ModelRegistry;
-    new (authStorage: AuthStorage): ModelRegistry;
+interface LegacyAuthStorage {
+  reload?: () => void;
+}
+
+interface LegacyModelRegistry {
+  refresh?: () => unknown;
+  getAvailable?: () => Model<any>[];
+}
+
+interface LegacyPiCodingAgentSdk {
+  AuthStorage?: { create?: () => LegacyAuthStorage };
+  ModelRegistry?: {
+    create?: (authStorage: LegacyAuthStorage) => LegacyModelRegistry;
+    new (authStorage: LegacyAuthStorage): LegacyModelRegistry;
   };
+}
 
-  if (typeof registryClass.create === 'function') {
-    return registryClass.create(authStorage);
+/**
+ * Read the model catalog through the pre-1.x SDK surface (sync AuthStorage +
+ * ModelRegistry). pi ≥1.0 removed AuthStorage from the package root and made
+ * ModelRegistry refresh async over ModelRuntime, so the CLI list is the
+ * authoritative source there and this returns [].
+ */
+export function loadLegacySdkModels(sdk: unknown = PiCodingAgent): AvailableModelInfo[] {
+  try {
+    const legacy = sdk as LegacyPiCodingAgentSdk;
+    if (typeof legacy.AuthStorage?.create !== 'function' || !legacy.ModelRegistry) {
+      return [];
+    }
+
+    const authStorage = legacy.AuthStorage.create();
+    authStorage.reload?.();
+
+    const registry =
+      typeof legacy.ModelRegistry.create === 'function'
+        ? legacy.ModelRegistry.create(authStorage)
+        : new legacy.ModelRegistry(authStorage);
+
+    const refreshResult = registry.refresh?.();
+    if (isThenable(refreshResult)) {
+      // pi ≥1.0 async refresh path: swallow the rejection and let the CLI
+      // catalog provide the model list.
+      Promise.resolve(refreshResult).catch(() => {});
+      return [];
+    }
+
+    return (registry.getAvailable?.() ?? []).map(toAvailableModelInfo);
+  } catch (err) {
+    logger.debug(
+      { err: err instanceof Error ? err.message : String(err) },
+      'legacy SDK model catalog unavailable',
+    );
+    return [];
   }
+}
 
-  return new registryClass(authStorage);
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return !!value && typeof (value as PromiseLike<unknown>).then === 'function';
 }
 
 function toAvailableModelInfo(model: Model<any>): AvailableModelInfo {

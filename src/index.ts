@@ -121,7 +121,11 @@ function warmModelCatalogs(): void {
   for (const cwd of workingDirectories) {
     try {
       const models = listAvailableModels({ forceRefresh: true, cwd });
-      logger.info({ cwd, models: models.length }, 'Model catalog warmed');
+      if (models.length === 0) {
+        logger.warn({ cwd }, 'Model catalog is empty');
+      } else {
+        logger.info({ cwd, models: models.length }, 'Model catalog warmed');
+      }
     } catch (err: any) {
       logger.warn({ cwd, err: err.message }, 'Failed to warm model catalog');
     }
