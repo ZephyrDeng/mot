@@ -49,17 +49,17 @@ A bare `/pi` opens an interactive control panel (ephemeral — only you see it):
 
 Text subcommands still work for muscle memory:
 
-| Subcommand          | Description                                                        |
-| ------------------- | ------------------------------------------------------------------ |
-| `/pi`               | Open the interactive panel                                         |
-| `/pi help`          | Show text usage                                                    |
-| `/pi status`        | Show model, thinking, working directory, session info, token usage |
-| `/pi model <ref>`   | Set the channel's model (fuzzy-matched against pi's catalog)       |
-| `/pi models`        | List the models pi can currently use                               |
-| `/pi reset-model`   | Clear the channel's model override                                 |
-| `/pi thinking <lv>` | Set thinking level: off / minimal / low / medium / high / xhigh    |
-| `/pi new`           | Start a fresh session for this channel                             |
-| `/pi stop`          | Abort the current task and clear queued messages                   |
+| Subcommand          | Description                                                                                                                        |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `/pi`               | Open the interactive panel                                                                                                         |
+| `/pi help`          | Show text usage                                                                                                                    |
+| `/pi status`        | Show model, thinking, working directory, session info, token usage                                                                 |
+| `/pi model <ref>`   | Set the channel's model (fuzzy-matched against pi's catalog)                                                                       |
+| `/pi models`        | List the models pi can currently use                                                                                               |
+| `/pi reset-model`   | Clear the channel's model override                                                                                                 |
+| `/pi thinking <lv>` | Set thinking level: off / minimal / low / medium / high / xhigh                                                                    |
+| `/pi new`           | Start a fresh session for this channel                                                                                             |
+| `/pi stop`          | Abort the current task and clear queued messages                                                                                   |
 | `/pi bind [dir]`    | Admins: register this channel with a working directory (name under `PROJECT_ROOTS`, absolute path, or the channel name by default) |
 
 The model list comes from your installed pi and honors its `enabledModels` scope, so it stays in sync as pi adds or removes models.
@@ -101,7 +101,7 @@ Whoever can message the bot drives a coding agent with shell and filesystem acce
 | Policy      | Behavior                                                  |
 | ----------- | --------------------------------------------------------- |
 | `open`      | DM channels auto-register on first message. **(default)** |
-| `allowlist` | Only DMs registered via `mot register` get responses.   |
+| `allowlist` | Only DMs registered via `mot register` get responses.     |
 | `disabled`  | All DMs are ignored.                                      |
 
 - Slack only delivers channel messages after the bot is **invited** (`/invite @pi`), so even `open` mode is gated by the invite.
@@ -146,33 +146,33 @@ Run **exactly one** gateway instance per Slack app — Socket Mode load-balances
 
 `mot setup` generates the config file for you; `mot status` shows its path (Linux: `~/.config/mot/config.env`, macOS: `~/Library/Application Support/mot/config.env`, Windows: `%APPDATA%\mot\config.env`). The `MOT_CONFIG` environment variable overrides the location. After changes, restart: `mot daemon stop && mot daemon start`.
 
-| Variable                     | Default                         | Description                                                                |
-| ---------------------------- | ------------------------------- | -------------------------------------------------------------------------- |
-| `SLACK_BOT_TOKEN`            | _(required)_                    | Bot User OAuth Token (`xoxb-…`)                                            |
-| `SLACK_APP_TOKEN`            | _(required)_                    | App-level token with `connections:write` for Socket Mode (`xapp-…`)        |
-| `PI_BIN`                     | `pi`                            | Path to pi binary                                                          |
-| `PI_MODEL`                   | _(none)_                        | Default model override                                                     |
-| `PI_THINKING`                | _(none)_                        | Default thinking level                                                     |
-| `PI_CWD`                     | `$HOME`                         | Default working directory for pi; can be overridden per registered channel |
-| `PI_EXTRA_FLAGS`             | _(none)_                        | Extra flags passed to pi                                                   |
-| `TRIGGER_NAME`               | `pi`                            | Bot trigger name for summoning in channels                                 |
-| `CHANNEL_POLICY`             | `allowlist`                     | Channel access: `open`, `open-trigger`, or `allowlist`                     |
-| `PROJECT_ROOTS`              | `$HOME`                         | Comma-separated roots `/pi bind <name>` searches for `<root>/<name>`       |
+| Variable                     | Default                         | Description                                                                  |
+| ---------------------------- | ------------------------------- | ---------------------------------------------------------------------------- |
+| `SLACK_BOT_TOKEN`            | _(required)_                    | Bot User OAuth Token (`xoxb-…`)                                              |
+| `SLACK_APP_TOKEN`            | _(required)_                    | App-level token with `connections:write` for Socket Mode (`xapp-…`)          |
+| `PI_BIN`                     | `pi`                            | Path to pi binary                                                            |
+| `PI_MODEL`                   | _(none)_                        | Default model override                                                       |
+| `PI_THINKING`                | _(none)_                        | Default thinking level                                                       |
+| `PI_CWD`                     | `$HOME`                         | Default working directory for pi; can be overridden per registered channel   |
+| `PI_EXTRA_FLAGS`             | _(none)_                        | Extra flags passed to pi                                                     |
+| `TRIGGER_NAME`               | `pi`                            | Bot trigger name for summoning in channels                                   |
+| `CHANNEL_POLICY`             | `allowlist`                     | Channel access: `open`, `open-trigger`, or `allowlist`                       |
+| `PROJECT_ROOTS`              | `$HOME`                         | Comma-separated roots `/pi bind <name>` searches for `<root>/<name>`         |
 | `ADMIN_USERS`                | _(none)_                        | Comma-separated Slack user IDs allowed to run `/pi bind` (empty disables it) |
-| `EXCLUDED_CHANNELS`          | _(none)_                        | Comma-separated channel IDs to exclude from auto-registration              |
-| `DM_POLICY`                  | `open`                          | DM access: `open`, `allowlist`, or `disabled`                              |
-| `REPLY_IN_THREAD`            | `true`                          | Post responses into the triggering message's thread when it has one        |
-| `MAX_CONCURRENCY`            | `3`                             | Max parallel pi invocations                                                |
-| `MAX_SCHEDULED_CONCURRENCY`  | `1`                             | Max scheduled tasks enqueued per tick                                      |
-| `POLL_INTERVAL_MS`           | `1000`                          | Queue poll interval (ms)                                                   |
-| `SHUTDOWN_TIMEOUT_MS`        | `15000`                         | Graceful shutdown timeout (ms)                                             |
-| `ARCHIVE_RETENTION_DAYS`     | `30`                            | Days to keep archived sessions (0 = never clean)                           |
-| `MAX_ATTACHMENT_BYTES`       | `26214400`                      | Max size per attachment (0 = no limit)                                     |
-| `MAX_TOTAL_ATTACHMENT_BYTES` | `52428800`                      | Max combined attachment size per message (0 = no limit)                    |
-| `MEDIA_RETENTION_HOURS`      | `168`                           | Hours to keep downloaded attachment files for path-based agent access      |
-| `SESSIONS_DIR`               | _(platform default)_/sessions   | Session storage directory                                                  |
-| `DB_PATH`                    | _(platform default)_/gateway.db | SQLite database path                                                       |
-| `LOG_LEVEL`                  | `info`                          | Log level: debug/info/warn/error                                           |
+| `EXCLUDED_CHANNELS`          | _(none)_                        | Comma-separated channel IDs to exclude from auto-registration                |
+| `DM_POLICY`                  | `open`                          | DM access: `open`, `allowlist`, or `disabled`                                |
+| `REPLY_IN_THREAD`            | `true`                          | Post responses into the triggering message's thread when it has one          |
+| `MAX_CONCURRENCY`            | `3`                             | Max parallel pi invocations                                                  |
+| `MAX_SCHEDULED_CONCURRENCY`  | `1`                             | Max scheduled tasks enqueued per tick                                        |
+| `POLL_INTERVAL_MS`           | `1000`                          | Queue poll interval (ms)                                                     |
+| `SHUTDOWN_TIMEOUT_MS`        | `15000`                         | Graceful shutdown timeout (ms)                                               |
+| `ARCHIVE_RETENTION_DAYS`     | `30`                            | Days to keep archived sessions (0 = never clean)                             |
+| `MAX_ATTACHMENT_BYTES`       | `26214400`                      | Max size per attachment (0 = no limit)                                       |
+| `MAX_TOTAL_ATTACHMENT_BYTES` | `52428800`                      | Max combined attachment size per message (0 = no limit)                      |
+| `MEDIA_RETENTION_HOURS`      | `168`                           | Hours to keep downloaded attachment files for path-based agent access        |
+| `SESSIONS_DIR`               | _(platform default)_/sessions   | Session storage directory                                                    |
+| `DB_PATH`                    | _(platform default)_/gateway.db | SQLite database path                                                         |
+| `LOG_LEVEL`                  | `info`                          | Log level: debug/info/warn/error                                             |
 
 Data lives next to the config: `~/.local/share/mot/` on Linux, `~/Library/Application Support/mot/` on macOS, `%LOCALAPPDATA%\mot\` on Windows.
 

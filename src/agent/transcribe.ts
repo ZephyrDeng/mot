@@ -50,13 +50,25 @@ function toFormat(contentType: string, fileName: string): string {
 }
 
 /** ZenMux accepts only wav/mpeg/mp3 — transcode anything else (Slack voice is m4a). */
-async function toAcceptedAudio(filePath: string, format: string): Promise<{ data: Buffer; format: string }> {
+async function toAcceptedAudio(
+  filePath: string,
+  format: string,
+): Promise<{ data: Buffer; format: string }> {
   if (['wav', 'mp3'].includes(format)) {
     return { data: await readFile(filePath), format };
   }
   try {
     const out = join(tmpdir(), `mot-asr-${process.pid}-${Date.now()}.mp3`);
-    await execFileAsync('ffmpeg', ['-y', '-i', filePath, '-codec:a', 'libmp3lame', '-q:a', '4', out]);
+    await execFileAsync('ffmpeg', [
+      '-y',
+      '-i',
+      filePath,
+      '-codec:a',
+      'libmp3lame',
+      '-q:a',
+      '4',
+      out,
+    ]);
     return { data: await readFile(out), format: 'mp3' };
   } catch (err: any) {
     logger.warn({ err: err.message, filePath }, 'Audio transcode to mp3 failed; sending original');
@@ -72,12 +84,18 @@ export async function transcribeAudio(file: DownloadedFile): Promise<string> {
   if (!isAudio(file.contentType)) return '';
   const apiKey = (readEnvValue('ZENMUX_API_KEY') ?? '').trim();
   if (!apiKey) {
-    logger.warn({ name: file.originalName }, 'Audio attachment but ZENMUX_API_KEY not set; skipping transcription');
+    logger.warn(
+      { name: file.originalName },
+      'Audio attachment but ZENMUX_API_KEY not set; skipping transcription',
+    );
     return '';
   }
 
   try {
-    const audio = await toAcceptedAudio(file.filePath, toFormat(file.contentType, file.originalName));
+    const audio = await toAcceptedAudio(
+      file.filePath,
+      toFormat(file.contentType, file.originalName),
+    );
     const resp = await fetch(ENDPOINT, {
       method: 'POST',
       headers: {
@@ -97,7 +115,10 @@ export async function transcribeAudio(file: DownloadedFile): Promise<string> {
 
     if (!resp.ok) {
       const body = await resp.text().catch(() => '');
-      logger.warn({ status: resp.status, body: body.slice(0, 200), name: file.originalName }, 'Transcription request failed');
+      logger.warn(
+        { status: resp.status, body: body.slice(0, 200), name: file.originalName },
+        'Transcription request failed',
+      );
       return '';
     }
 

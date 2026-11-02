@@ -140,11 +140,15 @@ export async function invokeAgent(
 
     const errChunks: Buffer[] = [];
     let stdoutBuf = '';
-    let assistantText = '';           // accumulated text for current assistant turn
-    const finalTexts: string[] = [];  // every assistant message's text, in order
+    let assistantText = ''; // accumulated text for current assistant turn
+    const finalTexts: string[] = []; // every assistant message's text, in order
 
     const emit = (event: ProgressEvent) => {
-      try { opts?.onProgress?.(event); } catch { /* progress is best-effort */ }
+      try {
+        opts?.onProgress?.(event);
+      } catch {
+        /* progress is best-effort */
+      }
     };
 
     const briefArgs = (tool: string, args: unknown): string => {
@@ -159,7 +163,11 @@ export async function invokeAgent(
 
     const handleLine = (line: string) => {
       let msg: any;
-      try { msg = JSON.parse(line); } catch { return; }
+      try {
+        msg = JSON.parse(line);
+      } catch {
+        return;
+      }
       const type = msg?.type;
       if (type === 'tool_execution_start') {
         emit({ kind: 'tool_start', tool: msg.toolName, args: briefArgs(msg.toolName, msg.args) });

@@ -246,7 +246,8 @@ async function handleBind(command: SlashCommand, respond: RespondFn, input: stri
   const target = resolveBindTarget(input, command.channel_name, config.projectRoots);
   if (!target.ok) {
     const lines = {
-      invalid: 'Use a bare directory name (letters, digits, `.`, `_`, `-`) or an absolute / `~/` path.',
+      invalid:
+        'Use a bare directory name (letters, digits, `.`, `_`, `-`) or an absolute / `~/` path.',
       missing: `No directory found. Searched:\n${target.candidates.map((c) => `• \`${c}\``).join('\n')}`,
       ambiguous: `Several matches — pass the full path:\n${target.candidates.map((c) => `• \`${c}\``).join('\n')}`,
     };

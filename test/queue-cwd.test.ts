@@ -63,7 +63,12 @@ describe('queue cwd selection', () => {
     expect(sendResponseMock).toHaveBeenCalledWith('sl:C123', 'done', {
       threadTs: '1751954000.000100',
     });
-    expect(setThreadStatusMock).toHaveBeenNthCalledWith(1, 'sl:C123', '1751954000.000100', 'is thinking…');
+    expect(setThreadStatusMock).toHaveBeenNthCalledWith(
+      1,
+      'sl:C123',
+      '1751954000.000100',
+      'is thinking…',
+    );
     expect(setThreadStatusMock).toHaveBeenLastCalledWith('sl:C123', '1751954000.000100', '');
   });
 });
