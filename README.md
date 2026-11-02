@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ZephyrDeng/mot/main/assets/logo.png" width="128" height="128" alt="Mot logo">
+</p>
+
 <h1 align="center">Mot</h1>
 
 <p align="center">
