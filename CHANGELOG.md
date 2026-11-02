@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 
 - `mot daemon stop` on macOS now waits until the service process actually exits (polling `launchctl print`, ~10s timeout with a clear error) instead of returning right after SIGTERM, so `mot daemon stop && mot daemon start` reliably restarts the service
 
+### Docs
+
+- Rewrote the README as a GitHub landing page: quick start, `/mot` command table, voice transcription, configuration reference, and pi-tag migration
+
 ## [0.4.0] - 2026-11-02
 
 ### Changed
