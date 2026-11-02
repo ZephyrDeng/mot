@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2026-11-02
+
+### Changed
+
+- Releases are published via npm trusted publishing (GitHub Actions OIDC); the long-lived `NPM_TOKEN` secret is no longer used
+
 ## [0.3.0] - 2026-11-02
 
 First release as **Mot**, a fork of [pi-tag](https://github.com/Crokily/pi-tag) 0.2.1.

@@ -42,15 +42,15 @@ jobs:
           fi
           echo "Verified: v$PKG_VERSION"
 
+      # npm trusted publishing (OIDC via id-token: write); no NPM_TOKEN needed.
+      # Provenance is generated automatically for this public repo.
       - name: Publish to npm
         run: |
           if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
-            npm publish --access public --tag next --provenance
+            npm publish --access public --tag next
           else
-            npm publish --access public --provenance
+            npm publish --access public
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
