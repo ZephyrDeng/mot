@@ -1,15 +1,15 @@
 {
-  "name": "pi-tag",
-  "version": "0.2.1",
-  "description": "Lightweight Slack gateway for pi coding agent",
+  "name": "@zephyrdeng/mot",
+  "version": "0.3.0",
+  "description": "Slack gateway for the pi coding agent (fork of pi-tag)",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Crokily/pi-tag.git"
+    "url": "git+https://github.com/ZephyrDeng/mot.git"
   },
-  "homepage": "https://github.com/Crokily/pi-tag#readme",
+  "homepage": "https://github.com/ZephyrDeng/mot#readme",
   "bugs": {
-    "url": "https://github.com/Crokily/pi-tag/issues"
+    "url": "https://github.com/ZephyrDeng/mot/issues"
   },
   "keywords": [
     "slack",
@@ -17,13 +17,13 @@
     "pi",
     "coding-agent",
     "gateway",
-    "pi-package"
+    "pi-package",
+    "pi-tag"
   ],
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "pitag": "dist/cli/index.js",
-    "pi-tag": "dist/cli/index.js"
+    "mot": "dist/cli/index.js"
   },
   "files": [
     "dist",

@@ -8,16 +8,16 @@ describe('buildConfigFile', () => {
       appToken: 'xapp-test-token',
       triggerName: 'PiBot',
       workingDir: '/workspace/project',
-      sessionsDir: '/var/lib/pi-tag/sessions',
-      dbPath: '/var/lib/pi-tag/gateway.db',
+      sessionsDir: '/var/lib/mot/sessions',
+      dbPath: '/var/lib/mot/gateway.db',
     });
 
     expect(text).toContain('SLACK_BOT_TOKEN=xoxb-test-token');
     expect(text).toContain('SLACK_APP_TOKEN=xapp-test-token');
     expect(text).toContain('TRIGGER_NAME=PiBot');
     expect(text).toContain('PI_CWD=/workspace/project');
-    expect(text).toContain('SESSIONS_DIR=/var/lib/pi-tag/sessions');
-    expect(text).toContain('DB_PATH=/var/lib/pi-tag/gateway.db');
+    expect(text).toContain('SESSIONS_DIR=/var/lib/mot/sessions');
+    expect(text).toContain('DB_PATH=/var/lib/mot/gateway.db');
     expect(text).not.toContain('AUTO_REGISTER_DMS');
   });
 
@@ -27,8 +27,8 @@ describe('buildConfigFile', () => {
       appToken: 'xapp-test-token',
       triggerName: 'PiBot',
       workingDir: '/workspace/project',
-      sessionsDir: '/var/lib/pi-tag/sessions',
-      dbPath: '/var/lib/pi-tag/gateway.db',
+      sessionsDir: '/var/lib/mot/sessions',
+      dbPath: '/var/lib/mot/gateway.db',
     });
 
     expect(text).toContain('DM_POLICY=open');
@@ -43,8 +43,8 @@ describe('buildConfigFile', () => {
       workingDir: '/workspace/project',
       dmPolicy: 'disabled',
       replyInThread: false,
-      sessionsDir: '/var/lib/pi-tag/sessions',
-      dbPath: '/var/lib/pi-tag/gateway.db',
+      sessionsDir: '/var/lib/mot/sessions',
+      dbPath: '/var/lib/mot/gateway.db',
     });
 
     expect(text).toContain('DM_POLICY=disabled');

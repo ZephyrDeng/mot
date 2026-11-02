@@ -272,7 +272,7 @@ async function processMessage(jid: string, msg: QueuedMessage, signal: AbortSign
   try {
     const prompt =
       `[Slack user: ${senderName}]\n` +
-      `[To share a file with the user, run: pitag send --channel ${jid} --file <absolute-path> ` +
+      `[To share a file with the user, run: mot send --channel ${jid} --file <absolute-path> ` +
       `(repeat --file for multiple). Do not paste file:// links — they are dead for Slack users.]\n` +
       content;
 
@@ -299,7 +299,7 @@ async function processMessage(jid: string, msg: QueuedMessage, signal: AbortSign
 
     if (result.ok) {
       // Safety net: if the agent still wrote file:// links instead of using
-      // `pitag send`, upload those files as real attachments and post the
+      // `mot send`, upload those files as real attachments and post the
       // cleaned text. The cleaned text is only used when every referenced
       // file is shareable, so no path information is ever lost.
       const extracted = extractFileUris(result.text);

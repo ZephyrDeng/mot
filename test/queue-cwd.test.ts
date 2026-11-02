@@ -69,7 +69,7 @@ describe('queue cwd selection', () => {
 });
 
 async function runQueuedMessage(cwdOverride: string): Promise<{ cwd?: string } | undefined> {
-  const tempDir = mkdtempSync(join(tmpdir(), 'pitag-queue-cwd-'));
+  const tempDir = mkdtempSync(join(tmpdir(), 'mot-queue-cwd-'));
   tempDirs.push(tempDir);
 
   process.env.DB_PATH = ':memory:';

@@ -9,7 +9,7 @@ import { startProcessingLoop, stopProcessingLoop } from './agent/queue.js';
 import { startScheduler } from './agent/scheduler.js';
 
 /**
- * pi-tag - Lightweight Slack gateway for pi coding agent.
+ * mot - Lightweight Slack gateway for pi coding agent.
  *
  * Architecture inspired by NanoClaw (https://github.com/qwibitai/nanoclaw).
  * Slack messages (Socket Mode) -> SQLite queue -> pi subprocess -> Slack response.
@@ -71,7 +71,7 @@ export async function startGateway(): Promise<void> {
   };
 
   try {
-    logger.info('Starting pi-tag...');
+    logger.info('Starting mot...');
     warmModelCatalogs();
 
     await startSlack();

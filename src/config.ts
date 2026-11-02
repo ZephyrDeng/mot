@@ -1,40 +1,57 @@
 import { parse } from 'dotenv';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isAbsolute, resolve } from 'node:path';
 
+const APP_DIR = 'mot';
+/** Pre-rename directory name; still honored so pi-tag installs keep working. */
+const LEGACY_APP_DIR = 'pitag';
 const DEFAULT_CONFIG_PATH = defaultConfigPath();
 const DEFAULT_DATA_DIR = defaultDataDir();
 const LEGACY_ENV_PATH = resolve(process.cwd(), '.env');
 const CONFIG_SOURCE = buildConfigSource();
 
-function defaultConfigPath(): string {
+/** Prefer the new location; fall back to the legacy one only if it exists and the new one doesn't. */
+function preferExisting(current: string, legacy: string): string {
+  return !existsSync(current) && existsSync(legacy) ? legacy : current;
+}
+
+function platformConfigPath(app: string): string {
   switch (process.platform) {
     case 'win32':
       return resolve(
         process.env.APPDATA || resolve(homedir(), 'AppData/Roaming'),
-        'pitag/config.env',
+        app,
+        'config.env',
       );
     case 'darwin':
-      return resolve(homedir(), 'Library/Application Support/pitag/config.env');
+      return resolve(homedir(), 'Library/Application Support', app, 'config.env');
     default:
-      return resolve(homedir(), '.config', 'pitag', 'config.env');
+      return resolve(homedir(), '.config', app, 'config.env');
   }
+}
+
+function platformDataDir(app: string): string {
+  switch (process.platform) {
+    case 'win32':
+      return resolve(process.env.LOCALAPPDATA || resolve(homedir(), 'AppData/Local'), app);
+    case 'darwin':
+      return resolve(homedir(), 'Library/Application Support', app);
+    default:
+      return resolve(homedir(), '.local/share', app);
+  }
+}
+
+function defaultConfigPath(): string {
+  return preferExisting(platformConfigPath(APP_DIR), platformConfigPath(LEGACY_APP_DIR));
 }
 
 export function defaultDataDir(): string {
-  switch (process.platform) {
-    case 'win32':
-      return resolve(process.env.LOCALAPPDATA || resolve(homedir(), 'AppData/Local'), 'pitag');
-    case 'darwin':
-      return resolve(homedir(), 'Library/Application Support/pitag');
-    default:
-      return resolve(homedir(), '.local/share', 'pitag');
-  }
+  return preferExisting(platformDataDir(APP_DIR), platformDataDir(LEGACY_APP_DIR));
 }
 
 export function resolveConfigPath(): string {
-  const configuredPath = process.env.PITAG_CONFIG?.trim() ?? '';
+  const configuredPath = (process.env.MOT_CONFIG || process.env.PITAG_CONFIG || '').trim();
   if (configuredPath) {
     return resolveUserPath(configuredPath);
   }
@@ -59,7 +76,8 @@ function expandHome(inputPath: string): string {
   return inputPath;
 }
 
-function readEnvValue(key: string): string | undefined {
+/** Raw value from process env > config.env > ./.env, for settings outside `config`. */
+export function readEnvValue(key: string): string | undefined {
   return CONFIG_SOURCE[key];
 }
 

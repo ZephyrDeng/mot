@@ -1,6 +1,6 @@
 /**
  * Slack text utilities shared by the Socket Mode client and the one-shot
- * `pitag send` path.
+ * `mot send` path.
  */
 
 import { basename } from 'node:path';

@@ -12,6 +12,7 @@ import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { readEnvValue } from '../config.js';
 import { logger } from '../logger.js';
 import type { DownloadedFile } from '../session/media.js';
 
@@ -54,7 +55,7 @@ async function toAcceptedAudio(filePath: string, format: string): Promise<{ data
     return { data: await readFile(filePath), format };
   }
   try {
-    const out = join(tmpdir(), `pitag-asr-${process.pid}-${Date.now()}.mp3`);
+    const out = join(tmpdir(), `mot-asr-${process.pid}-${Date.now()}.mp3`);
     await execFileAsync('ffmpeg', ['-y', '-i', filePath, '-codec:a', 'libmp3lame', '-q:a', '4', out]);
     return { data: await readFile(out), format: 'mp3' };
   } catch (err: any) {
@@ -69,7 +70,7 @@ async function toAcceptedAudio(filePath: string, format: string): Promise<{ data
  */
 export async function transcribeAudio(file: DownloadedFile): Promise<string> {
   if (!isAudio(file.contentType)) return '';
-  const apiKey = (process.env.ZENMUX_API_KEY ?? '').trim();
+  const apiKey = (readEnvValue('ZENMUX_API_KEY') ?? '').trim();
   if (!apiKey) {
     logger.warn({ name: file.originalName }, 'Audio attachment but ZENMUX_API_KEY not set; skipping transcription');
     return '';

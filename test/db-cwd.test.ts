@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const originalEnv = { ...process.env };
 const tempDirs: string[] = [];
-const CONFIG_ENV_KEYS = ['DB_PATH', 'HOME', 'PITAG_CONFIG', 'SESSIONS_DIR'];
+const CONFIG_ENV_KEYS = ['DB_PATH', 'HOME', 'MOT_CONFIG', 'SESSIONS_DIR'];
 
 afterEach(() => {
   vi.resetModules();
@@ -27,7 +27,7 @@ afterEach(() => {
 
 describe('channel cwd migration', () => {
   it('adds cwd_override for legacy databases and preserves overrides on later re-registration', async () => {
-    const tempDir = mkdtempSync(join(tmpdir(), 'pitag-db-cwd-'));
+    const tempDir = mkdtempSync(join(tmpdir(), 'mot-db-cwd-'));
     tempDirs.push(tempDir);
 
     const dbPath = resolve(tempDir, 'gateway.db');
@@ -111,7 +111,7 @@ describe('channel cwd migration', () => {
 
 describe('message queue slack context migration', () => {
   it('adds event_ts/thread_ts to legacy databases and round-trips them through enqueue/claim', async () => {
-    const tempDir = mkdtempSync(join(tmpdir(), 'pitag-db-queue-ctx-'));
+    const tempDir = mkdtempSync(join(tmpdir(), 'mot-db-queue-ctx-'));
     tempDirs.push(tempDir);
 
     const dbPath = resolve(tempDir, 'gateway.db');

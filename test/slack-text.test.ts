@@ -137,7 +137,7 @@ describe('extractFileUris', () => {
   // file:// URIs are platform-specific (Windows needs a drive letter, and
   // fileURLToPath rejects POSIX-style URIs there), so test inputs are built
   // from real platform paths via pathToFileURL.
-  const base = process.platform === 'win32' ? 'C:\\pi-tag-test' : '/pi-tag-test';
+  const base = process.platform === 'win32' ? 'C:\\mot-test' : '/mot-test';
   const filePath = (name: string) => join(base, name);
   const fileUri = (name: string) => pathToFileURL(filePath(name)).href;
 

@@ -1,25 +1,27 @@
-<h1 align="center">pi-tag</h1>
+<h1 align="center">Mot</h1>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/pi-tag"><img src="https://img.shields.io/npm/v/pi-tag?cacheSeconds=3600" alt="npm version"></a>
-  <img src="https://img.shields.io/npm/l/pi-tag?cacheSeconds=3600" alt="license">
-  <img src="https://img.shields.io/node/v/pi-tag?cacheSeconds=3600" alt="node version">
+  <a href="https://www.npmjs.com/package/@zephyrdeng/mot"><img src="https://img.shields.io/npm/v/@zephyrdeng/mot?cacheSeconds=3600" alt="npm version"></a>
+  <img src="https://img.shields.io/npm/l/@zephyrdeng/mot?cacheSeconds=3600" alt="license">
+  <img src="https://img.shields.io/node/v/@zephyrdeng/mot?cacheSeconds=3600" alt="node version">
   <img src="https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-blue" alt="platform">
 </p>
 
-pi-tag puts the [pi coding agent](https://github.com/badlogic/pi-mono) in Slack. Chat with pi in DMs, channels, and threads — from your desktop or your phone. Each channel is its own persistent session with its own working directory and model; pi reads the files you drop into Slack and sends files back; recurring tasks run on a schedule; an interactive `/pi` panel switches models and thinking levels with a click.
+Mot puts the [pi coding agent](https://github.com/badlogic/pi-mono) in Slack. Chat with pi in DMs, channels, and threads — from your desktop or your phone. Each channel is its own persistent session with its own working directory and model; pi reads the files you drop into Slack and sends files back; recurring tasks run on a schedule; an interactive `/pi` panel switches models and thinking levels with a click.
+
+> Mot is a fork of [pi-tag](https://github.com/Crokily/pi-tag) by [@Crokily](https://github.com/Crokily). See [What's different from pi-tag](#whats-different-from-pi-tag).
 
 ```bash
-npm install -g pi-tag
-pitag setup        # interactive wizard — walks you through everything
+npm install -g @zephyrdeng/mot
+mot setup        # interactive wizard — walks you through everything
 ```
 
-The wizard checks prerequisites, walks you through creating the Slack app, asks for your two tokens, lets you pick an access policy, and optionally installs a background service. (No global install? `npx pi-tag@latest setup` works too. Both `pitag` and `pi-tag` commands are installed.)
+The wizard checks prerequisites, walks you through creating the Slack app, asks for your two tokens, lets you pick an access policy, and optionally installs a background service. (No global install? `npx @zephyrdeng/mot@latest setup` works too.)
 
 ## Requirements
 
 - **Node.js** ≥ 22.19
-- **[pi](https://github.com/badlogic/pi-mono)** ≥ 0.80 on `PATH`, with login completed (`~/.pi/agent/auth.json`) — pi-tag runs on the same machine as pi and drives your existing install
+- **[pi](https://github.com/badlogic/pi-mono)** ≥ 0.80 on `PATH`, with login completed (`~/.pi/agent/auth.json`) — Mot runs on the same machine as pi and drives your existing install
 - **A Slack workspace** where you can create apps (free plan is fine)
 - Linux, macOS, or Windows
 
@@ -28,7 +30,7 @@ The wizard checks prerequisites, walks you through creating the Slack app, asks 
 1. **Create the Slack app** — [api.slack.com/apps](https://api.slack.com/apps) → _Create New App_ → _From a manifest_ → pick your workspace → paste [`manifest.yaml`](./manifest.yaml) from this repository.
 2. **Install it to your workspace** — _OAuth & Permissions_ → _Install to Workspace_, copy the **Bot User OAuth Token** (`xoxb-…`).
 3. **Create the app-level token** — _Basic Information_ → _App-Level Tokens_ → generate one with the `connections:write` scope, copy it (`xapp-…`).
-4. **Run `pitag setup`** and paste both tokens.
+4. **Run `mot setup`** and paste both tokens.
 5. **Talk** — open a DM with the bot, or `/invite @pi` to a channel and register it (see [Access control](#access-control)).
 
 The app uses Socket Mode: the gateway opens an outbound WebSocket, so no public URL or inbound ports are needed.
@@ -38,7 +40,7 @@ The app uses Socket Mode: the gateway opens an outbound WebSocket, so no public 
 - **DMs** — every message reaches pi (default `DM_POLICY=open`). Great from the Slack mobile app: kick off a task from your phone, get the result when it's done.
 - **Channels** — register a channel and pi joins the conversation. In trigger-gated channels, summon it by @mentioning the bot or starting your message with its trigger name: `@pi fix the build` and `pi fix the build` both work (`TRIGGER_NAME`, matched only at the start of a message).
 - **Threads** — trigger pi inside a thread and the answer lands in that thread (`REPLY_IN_THREAD=true` by default). Threads share the channel's session; they're a reply location, not a separate conversation.
-- While pi works, the thread shows Slack's native status ("Mot is running bash…"); long answers are posted as Markdown and split at Slack's 4,000-character limit.
+- While pi works, the thread shows Slack's native status ("pi is running bash…"); long answers are posted as Markdown and split at Slack's 4,000-character limit.
 - Summoning the bot in an unregistered channel gets a short registration hint instead of silence (rate-limited to once per 10 minutes per channel).
 
 ## The `/pi` panel
@@ -65,7 +67,7 @@ The model list comes from your installed pi and honors its `enabledModels` scope
 ## Files, both directions
 
 - **To pi** — drop a file into the chat. The gateway downloads it and hands it to pi by local path, so pi can inspect, convert, or edit any file type without flooding its context.
-- **From pi** — ask for a file and pi delivers it: it's taught the gateway's `pitag send` command with every message, and any `file://` reference left in a reply is automatically uploaded as a real Slack attachment. Up to 10 files per message, subject to the configured size limits.
+- **From pi** — ask for a file and pi delivers it: it's taught the gateway's `mot send` command with every message, and any `file://` reference left in a reply is automatically uploaded as a real Slack attachment. Up to 10 files per message, subject to the configured size limits.
 
 ## Scheduled tasks
 
@@ -74,12 +76,12 @@ Tell pi what you want, in plain language:
 > _"Create a daily task at 9am UTC that generates a summary report"_
 > _"Set a one-time reminder for the 2pm meeting today"_
 
-pi runs `pitag task add` behind the scenes — 5-field cron for recurring tasks, an ISO 8601 datetime with `--once` for one-shots. Scheduled prompts go through the normal message queue, so they use the channel's model, thinking level, and working directory. Manage tasks the same way (`pitag task list | enable | disable | remove`), by asking pi or from your terminal.
+pi runs `mot task add` behind the scenes — 5-field cron for recurring tasks, an ISO 8601 datetime with `--once` for one-shots. Scheduled prompts go through the normal message queue, so they use the channel's model, thinking level, and working directory. Manage tasks the same way (`mot task list | enable | disable | remove`), by asking pi or from your terminal.
 
 ## Sessions
 
 - **One session per channel.** Each registered channel or DM maps to its own pi session; history persists across messages via `pi --continue`.
-- **Per-channel setup.** Point a channel at a project with `pitag register <id> <name> --cwd /path/to/repo`, and give it its own model and thinking level via `/pi` — overrides stick to the channel.
+- **Per-channel setup.** Point a channel at a project with `mot register <id> <name> --cwd /path/to/repo`, and give it its own model and thinking level via `/pi` — overrides stick to the channel.
 - **`/pi new` rotates the session** — the old one is archived and cleaned up after `ARCHIVE_RETENTION_DAYS`.
 
 ## Access control
@@ -99,15 +101,15 @@ Whoever can message the bot drives a coding agent with shell and filesystem acce
 | Policy      | Behavior                                                  |
 | ----------- | --------------------------------------------------------- |
 | `open`      | DM channels auto-register on first message. **(default)** |
-| `allowlist` | Only DMs registered via `pitag register` get responses.   |
+| `allowlist` | Only DMs registered via `mot register` get responses.   |
 | `disabled`  | All DMs are ignored.                                      |
 
 - Slack only delivers channel messages after the bot is **invited** (`/invite @pi`), so even `open` mode is gated by the invite.
 - Register channels by **channel ID** (`C…` public, `G…` private, `D…` DM — bottom of the channel's _About_ tab), not `#name`:
 
   ```bash
-  pitag register C0123456789 "team #general" --no-trigger
-  pitag register C0123456789 "team #general" --cwd /srv/repos/app
+  mot register C0123456789 "team #general" --no-trigger
+  mot register C0123456789 "team #general" --cwd /srv/repos/app
   ```
 
 - Group DMs (mpim) behave like channels and follow `CHANNEL_POLICY`.
@@ -131,18 +133,18 @@ Every received Slack event is acknowledged immediately and written to the SQLite
 The setup wizard offers to install a background service; you can also manage it manually:
 
 ```bash
-pitag daemon install | start | status | logs | stop | uninstall
+mot daemon install | start | status | logs | stop | uninstall
 ```
 
-- **Linux** — systemd user service (`pitag`). Headless server? Enable lingering: `sudo loginctl enable-linger $USER`
-- **macOS** — launchd user agent (`com.pitag`)
-- **Windows** — no daemon management yet; run `pitag start` in a terminal or use Task Scheduler
+- **Linux** — systemd user service (`mot`). Headless server? Enable lingering: `sudo loginctl enable-linger $USER`
+- **macOS** — launchd user agent (`com.mot`)
+- **Windows** — no daemon management yet; run `mot start` in a terminal or use Task Scheduler
 
 Run **exactly one** gateway instance per Slack app — Socket Mode load-balances events across connections, so a second instance silently takes half your messages.
 
 ## Configuration
 
-`pitag setup` generates the config file for you; `pitag status` shows its path (Linux: `~/.config/pitag/config.env`, macOS: `~/Library/Application Support/pitag/config.env`, Windows: `%APPDATA%\pitag\config.env`). The `PITAG_CONFIG` environment variable overrides the location. After changes, restart: `pitag daemon stop && pitag daemon start`.
+`mot setup` generates the config file for you; `mot status` shows its path (Linux: `~/.config/mot/config.env`, macOS: `~/Library/Application Support/mot/config.env`, Windows: `%APPDATA%\mot\config.env`). The `MOT_CONFIG` environment variable overrides the location. After changes, restart: `mot daemon stop && mot daemon start`.
 
 | Variable                     | Default                         | Description                                                                |
 | ---------------------------- | ------------------------------- | -------------------------------------------------------------------------- |
@@ -172,50 +174,50 @@ Run **exactly one** gateway instance per Slack app — Socket Mode load-balances
 | `DB_PATH`                    | _(platform default)_/gateway.db | SQLite database path                                                       |
 | `LOG_LEVEL`                  | `info`                          | Log level: debug/info/warn/error                                           |
 
-Data lives next to the config: `~/.local/share/pitag/` on Linux, `~/Library/Application Support/pitag/` on macOS, `%LOCALAPPDATA%\pitag\` on Windows.
+Data lives next to the config: `~/.local/share/mot/` on Linux, `~/Library/Application Support/mot/` on macOS, `%LOCALAPPDATA%\mot\` on Windows.
 
 ## CLI Reference
 
 ```
-pitag setup [bot-token] [app-token]           Interactive setup wizard
-pitag start                                   Start gateway (foreground)
-pitag status                                  Show diagnostics
+mot setup [bot-token] [app-token]           Interactive setup wizard
+mot start                                   Start gateway (foreground)
+mot status                                  Show diagnostics
 
-pitag channels                                List registered channels
-pitag register <id> <name> [options]          Register a channel
-pitag unregister <id>                         Unregister a channel
+mot channels                                List registered channels
+mot register <id> <name> [options]          Register a channel
+mot unregister <id>                         Unregister a channel
 
-pitag send --channel <jid> [--text <msg>] [--file <path> ...]
+mot send --channel <jid> [--text <msg>] [--file <path> ...]
 
-pitag task add --name <n> --schedule <cron|iso> --channel <jid> --prompt <text> [--once]
-pitag task list | remove <id> | enable <id> | disable <id>
+mot task add --name <n> --schedule <cron|iso> --channel <jid> --prompt <text> [--once]
+mot task list | remove <id> | enable <id> | disable <id>
 
-pitag archive list                            List archived sessions
-pitag archive cleanup [--dry-run]             Clean up expired archived sessions
+mot archive list                            List archived sessions
+mot archive cleanup [--dry-run]             Clean up expired archived sessions
 
-pitag daemon install | uninstall | start | stop | status | logs
+mot daemon install | uninstall | start | stop | status | logs
 ```
 
 Channel jids are the Slack channel ID with an `sl:` prefix (e.g. `sl:C0123456789`); bare IDs are accepted and prefixed automatically. Register options: `--no-trigger` (respond to all messages), `--main` (implies `--no-trigger`), `--folder <name>` (custom session folder), `--cwd <path>` (per-channel working directory).
 
-`pitag send` and `pitag task` are also the gateway's tools for pi — pi invokes them itself when you ask it to send a file or schedule something. `pitag send` works standalone, without a running gateway.
+`mot send` and `mot task` are also the gateway's tools for pi — pi invokes them itself when you ask it to send a file or schedule something. `mot send` works standalone, without a running gateway.
 
 ## Troubleshooting
 
 <details>
 <summary><strong>pi not found in PATH</strong></summary>
 
-`pitag status` shows "Pi binary: not found".
+`mot status` shows "Pi binary: not found".
 
 - Check `pi --version` works in the same shell
 - Set `PI_BIN=/full/path/to/pi` in config.env
-- Restart: `pitag daemon stop && pitag daemon start`
+- Restart: `mot daemon stop && mot daemon start`
 </details>
 
 <details>
 <summary><strong>Missing auth.json</strong></summary>
 
-`pitag status` shows "Pi auth: missing".
+`mot status` shows "Pi auth: missing".
 
 - Run `pi` and complete the login flow
 - Confirm `~/.pi/agent/auth.json` exists for the same user running the gateway
@@ -224,8 +226,8 @@ Channel jids are the Slack channel ID with an `sl:` prefix (e.g. `sl:C0123456789
 <details>
 <summary><strong>Daemon service won't start</strong></summary>
 
-- `pitag daemon status` — check for errors
-- `pitag daemon logs` — see log output
+- `mot daemon status` — check for errors
+- `mot daemon logs` — see log output
 - **Linux**: for headless servers, run `sudo loginctl enable-linger $USER`
 - **macOS**: check `daemon.stdout.log` / `daemon.stderr.log` in the data directory
 </details>
@@ -234,17 +236,17 @@ Channel jids are the Slack channel ID with an `sl:` prefix (e.g. `sl:C0123456789
 <summary><strong>Bot is online but doesn't respond</strong></summary>
 
 - The bot must be **invited** to a channel before Slack delivers its messages: `/invite @pi`
-- `allowlist` policy (the default): run `pitag channels` — the channel must be registered by its ID
+- `allowlist` policy (the default): run `mot channels` — the channel must be registered by its ID
 - `open` policy: check `EXCLUDED_CHANNELS` doesn't include your channel
 - For trigger-only channels: mention the bot (`@pi …`) or start the message with the trigger name
 - DMs: check `DM_POLICY` isn't `disabled`
-- Verify both tokens with `pitag status` (`xoxb-…` bot token and `xapp-…` app token)
+- Verify both tokens with `mot status` (`xoxb-…` bot token and `xapp-…` app token)
 </details>
 
 <details>
 <summary><strong>Replies are intermittent or sessions lose context</strong></summary>
 
-Almost always caused by **two gateway instances running against the same app**. Slack Socket Mode load-balances events across connections, so a second instance silently receives half your messages and splits your sessions. Stop all copies (`pitag daemon stop`, check stray `pitag start` terminals) and run exactly one.
+Almost always caused by **two gateway instances running against the same app**. Slack Socket Mode load-balances events across connections, so a second instance silently receives half your messages and splits your sessions. Stop all copies (`mot daemon stop`, check stray `mot start` terminals) and run exactly one.
 
 </details>
 
@@ -262,8 +264,8 @@ To report a vulnerability, see [SECURITY.md](./SECURITY.md).
 ## Development
 
 ```bash
-git clone https://github.com/Crokily/pi-tag.git
-cd pi-tag
+git clone https://github.com/ZephyrDeng/mot.git
+cd mot
 npm install
 npm run dev          # Start with tsx (no build needed)
 npm run build        # Compile TypeScript
@@ -272,12 +274,24 @@ npm test             # Run Vitest suite
 
 Contributions welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md). Release notes live in the [Changelog](./CHANGELOG.md).
 
+## What's different from pi-tag
+
+Mot tracks [pi-tag](https://github.com/Crokily/pi-tag) v0.2.1 and adds:
+
+- **pi-coding-agent 1.x support** — model catalog works with the 1.x SDK surface.
+- **Native thread status** — Slack's built-in "is running…" indicator replaces the busy reaction.
+- **`/pi bind [dir]`** — admins register a channel and its working directory from Slack, no terminal needed.
+- **Voice messages** — audio attachments are transcribed (ZenMux ASR, opt-in via `ZENMUX_API_KEY`; `ffmpeg` needed for non-mp3/wav input) and handed to pi as the message text.
+
+Upgrading from pi-tag: the command is now `mot` and the config variable is `MOT_CONFIG`. Existing `pitag` config/data directories and `PITAG_CONFIG` are still picked up automatically. The background service is renamed (`mot` / `com.mot`), so run `pitag daemon uninstall` before `mot daemon install`.
+
 ## License
 
-MIT
+MIT — see [LICENSE](./LICENSE). Original pi-tag and piscord copyrights are retained.
 
 ## Acknowledgments
 
-- Forked from [piscord](https://github.com/Crokily/pi-discord-gateway) — same core engine, new Slack platform layer
+- Forked from [pi-tag](https://github.com/Crokily/pi-tag) by [@Crokily](https://github.com/Crokily)
+- pi-tag itself is derived from [piscord](https://github.com/Crokily/pi-discord-gateway)
 - Architecture inspired by [NanoClaw](https://github.com/qwibitai/nanoclaw)
 - Built for [pi-mono](https://github.com/badlogic/pi-mono) by [@badlogic](https://github.com/badlogic)

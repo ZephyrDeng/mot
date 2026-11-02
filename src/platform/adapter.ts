@@ -2,7 +2,7 @@
  * Platform adapter port — the single seam between the platform-neutral core
  * (queue, agent, sessions, scheduler) and a chat platform implementation.
  *
- * pi-tag ships exactly one implementation (src/slack/client.ts). The interface
+ * mot ships exactly one implementation (src/slack/client.ts). The interface
  * exists so the core never grows platform-specific imports beyond this shape,
  * and so a future shared gateway core can be extracted without refactoring.
  */

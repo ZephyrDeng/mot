@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { resolveBindTarget } from '../src/slack/bind.js';
 
-const base = mkdtempSync(join(tmpdir(), 'pitag-bind-'));
+const base = mkdtempSync(join(tmpdir(), 'mot-bind-'));
 const rootA = join(base, 'a');
 const rootB = join(base, 'b');
 for (const dir of ['a/melora', 'a/shared', 'b/shared', 'b/relay-server']) {

@@ -7,7 +7,7 @@ import { config, resolveConfigPath, validateSlackTokens } from '../config.js';
 import { closeDb, getAllChannels, initDb } from '../db.js';
 
 const AUTH_PATH = resolve(homedir(), '.pi/agent/auth.json');
-const SERVICE_NAME = 'pitag';
+const SERVICE_NAME = 'mot';
 
 export async function runStatus(): Promise<void> {
   const configPath = resolveConfigPath();
@@ -21,7 +21,7 @@ export async function runStatus(): Promise<void> {
   const sessionFolderCount = countSessionFolders(sessionsPath);
 
   const lines = [
-    'pitag status',
+    'mot status',
     '',
     `Pi binary: ${piPath || 'not found'}`,
     `Pi version: ${piVersion || 'unknown'}`,

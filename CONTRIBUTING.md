@@ -1,4 +1,4 @@
-# Contributing to pi-tag
+# Contributing to mot
 
 Thanks for your interest in contributing! This guide will help you get started.
 
@@ -7,8 +7,8 @@ Thanks for your interest in contributing! This guide will help you get started.
 1. **Fork and clone** the repository:
 
    ```bash
-   git clone https://github.com/<your-username>/pi-tag.git
-   cd pi-tag
+   git clone https://github.com/<your-username>/mot.git
+   cd mot
    ```
 
 2. **Install dependencies** (Node.js >= 20 required):

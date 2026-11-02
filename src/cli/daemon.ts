@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defaultDataDir, resolveConfigPath } from '../config.js';
 
-const SERVICE_NAME = 'pitag';
+const SERVICE_NAME = 'mot';
 const DATA_DIR = defaultDataDir();
 
 const isLinux = () => process.platform === 'linux';
@@ -59,7 +59,7 @@ function linuxInstall(): void {
     SYSTEMD_SERVICE_PATH,
     [
       '[Unit]',
-      'Description=pi-tag Slack Gateway',
+      'Description=mot Slack Gateway',
       'After=network-online.target',
       'Wants=network-online.target',
       '',
@@ -71,7 +71,7 @@ function linuxInstall(): void {
       'RestartSec=10',
       'StandardOutput=journal',
       'StandardError=journal',
-      `Environment=PITAG_CONFIG=${configPath}`,
+      `Environment=MOT_CONFIG=${configPath}`,
       '',
       '[Install]',
       'WantedBy=default.target',
@@ -217,7 +217,7 @@ function buildPlist(options: {
     '',
     '  <key>EnvironmentVariables</key>',
     '  <dict>',
-    '    <key>PITAG_CONFIG</key>',
+    '    <key>MOT_CONFIG</key>',
     `    <string>${esc(configPath)}</string>`,
     '    <key>PATH</key>',
     `    <string>${esc(pathEnv)}</string>`,

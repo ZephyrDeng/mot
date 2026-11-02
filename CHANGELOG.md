@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-11-02
+
+First release as **Mot**, a fork of [pi-tag](https://github.com/Crokily/pi-tag) 0.2.1.
+
+### Changed
+
+- Renamed to Mot: npm package `@zephyrdeng/mot`, command `mot`, config variable `MOT_CONFIG`, service `mot` / `com.mot`, config/data directories `mot/`
+- Legacy `pitag` config/data directories and `PITAG_CONFIG` are still honored when no `mot` equivalent exists
+- Busy reaction replaced with Slack's native thread status indicator
+
+### Added
+
+- `/pi bind [dir]` registers a channel and its working directory from Slack (admins)
+- Audio attachments are transcribed via ZenMux ASR when `ZENMUX_API_KEY` is set (process env or `config.env`)
+
+### Fixed
+
+- Model catalog works with the pi-coding-agent 1.x SDK surface
+
 ## [0.2.1] - 2026-07-12
 
 ### Changed

@@ -17,6 +17,7 @@ const CONFIG_ENV_KEYS = [
   'MAX_CONCURRENCY',
   'MAX_TOTAL_ATTACHMENT_BYTES',
   'MEDIA_RETENTION_HOURS',
+  'MOT_CONFIG',
   'PITAG_CONFIG',
   'PI_BIN',
   'PI_CWD',
@@ -65,20 +66,22 @@ afterEach(() => {
 });
 
 describe('resolveConfigPath', () => {
-  it('uses PITAG_CONFIG when set', async () => {
-    process.env.PITAG_CONFIG = '~/custom/pi-tag/config.env';
+  it('uses MOT_CONFIG when set', async () => {
+    process.env.MOT_CONFIG = '~/custom/mot/config.env';
 
     const { resolveConfigPath } = await loadConfigModule();
 
-    expect(resolveConfigPath()).toBe(resolve(homedir(), 'custom/pi-tag/config.env'));
+    expect(resolveConfigPath()).toBe(resolve(homedir(), 'custom/mot/config.env'));
   });
 
   it('falls back to the platform default config path', async () => {
-    delete process.env.PITAG_CONFIG;
+    const homeDir = createTempDir();
+    stubHomeDir(homeDir);
+    delete process.env.MOT_CONFIG;
 
     const { resolveConfigPath } = await loadConfigModule();
 
-    expect(resolveConfigPath()).toBe(expectedDefaultConfigPath(homedir()));
+    expect(resolveConfigPath()).toBe(expectedDefaultConfigPath(homeDir));
   });
 });
 
@@ -101,7 +104,7 @@ describe('config loading', () => {
 
     process.chdir(workDir);
     stubHomeDir(homeDir);
-    process.env.PITAG_CONFIG = configPath;
+    process.env.MOT_CONFIG = configPath;
     process.env.PI_CWD = '/env/project';
     delete process.env.DB_PATH;
     delete process.env.SESSIONS_DIR;
@@ -131,7 +134,7 @@ describe('config loading', () => {
     });
 
     process.chdir(workDir);
-    delete process.env.PITAG_CONFIG;
+    delete process.env.MOT_CONFIG;
     delete process.env.DB_PATH;
     delete process.env.SESSIONS_DIR;
 
@@ -142,13 +145,13 @@ describe('config loading', () => {
     expect(config.sessionsDir).toBe('/default/sessions');
   });
 
-  it('uses the pitag platform data directory defaults when storage paths are unset', async () => {
+  it('uses the mot platform data directory defaults when storage paths are unset', async () => {
     const homeDir = createTempDir();
     const workDir = createTempDir();
 
     process.chdir(workDir);
     stubHomeDir(homeDir);
-    delete process.env.PITAG_CONFIG;
+    delete process.env.MOT_CONFIG;
     delete process.env.DB_PATH;
     delete process.env.SESSIONS_DIR;
 
@@ -159,13 +162,39 @@ describe('config loading', () => {
     expect(config.sessionsDir).toBe(resolve(dataDir, 'sessions'));
   });
 
+  it('keeps using a legacy pitag data directory when no mot one exists', async () => {
+    const homeDir = createTempDir();
+    const workDir = createTempDir();
+
+    process.chdir(workDir);
+    stubHomeDir(homeDir);
+    delete process.env.MOT_CONFIG;
+    delete process.env.DB_PATH;
+    delete process.env.SESSIONS_DIR;
+    const legacyDir = expectedDefaultDataDir(homeDir).replace(/mot$/, 'pitag');
+    mkdirSync(legacyDir, { recursive: true });
+
+    const { config } = await loadConfigModule();
+
+    expect(config.dbPath).toBe(resolve(legacyDir, 'gateway.db'));
+  });
+
+  it('honors the legacy PITAG_CONFIG variable', async () => {
+    delete process.env.MOT_CONFIG;
+    process.env.PITAG_CONFIG = '~/legacy/config.env';
+
+    const { resolveConfigPath } = await loadConfigModule();
+
+    expect(resolveConfigPath()).toBe(resolve(homedir(), 'legacy/config.env'));
+  });
+
   it('defaults dmPolicy to open and replyInThread to true', async () => {
     const homeDir = createTempDir();
     const workDir = createTempDir();
 
     process.chdir(workDir);
     stubHomeDir(homeDir);
-    delete process.env.PITAG_CONFIG;
+    delete process.env.MOT_CONFIG;
     delete process.env.DM_POLICY;
     delete process.env.REPLY_IN_THREAD;
 
@@ -181,7 +210,7 @@ describe('config loading', () => {
 
     process.chdir(workDir);
     stubHomeDir(homeDir);
-    delete process.env.PITAG_CONFIG;
+    delete process.env.MOT_CONFIG;
     process.env.DM_POLICY = 'disabled';
     process.env.REPLY_IN_THREAD = 'false';
 
@@ -221,7 +250,7 @@ describe('validateSlackTokens', () => {
 });
 
 function createTempDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'pitag-config-'));
+  const dir = mkdtempSync(join(tmpdir(), 'mot-config-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -239,25 +268,22 @@ function writeEnvFile(filePath: string, values: Record<string, string>): void {
 function expectedDefaultConfigPath(homeDir: string): string {
   switch (process.platform) {
     case 'win32':
-      return resolve(
-        process.env.APPDATA || resolve(homeDir, 'AppData/Roaming'),
-        'pitag/config.env',
-      );
+      return resolve(process.env.APPDATA || resolve(homeDir, 'AppData/Roaming'), 'mot/config.env');
     case 'darwin':
-      return resolve(homeDir, 'Library/Application Support/pitag/config.env');
+      return resolve(homeDir, 'Library/Application Support/mot/config.env');
     default:
-      return resolve(homeDir, '.config', 'pitag', 'config.env');
+      return resolve(homeDir, '.config', 'mot', 'config.env');
   }
 }
 
 function expectedDefaultDataDir(homeDir: string): string {
   switch (process.platform) {
     case 'win32':
-      return resolve(process.env.LOCALAPPDATA || resolve(homeDir, 'AppData/Local'), 'pitag');
+      return resolve(process.env.LOCALAPPDATA || resolve(homeDir, 'AppData/Local'), 'mot');
     case 'darwin':
-      return resolve(homeDir, 'Library/Application Support/pitag');
+      return resolve(homeDir, 'Library/Application Support/mot');
     default:
-      return resolve(homeDir, '.local/share', 'pitag');
+      return resolve(homeDir, '.local/share', 'mot');
   }
 }
 
