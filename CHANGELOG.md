@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] - 2026-11-02
+
+### Fixed
+
+- `mot daemon stop` on macOS now waits until the service process actually exits (polling `launchctl print`, ~10s timeout with a clear error) instead of returning right after SIGTERM, so `mot daemon stop && mot daemon start` reliably restarts the service
+
 ## [0.4.0] - 2026-11-02
 
 ### Changed

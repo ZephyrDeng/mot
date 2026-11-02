@@ -161,24 +161,95 @@ function macStart(): void {
   run('launchctl', ['kickstart', `gui/${macUid()}/${PLIST_LABEL}`]);
 }
 
-function macStop(): void {
-  run('launchctl', ['kill', 'SIGTERM', `gui/${macUid()}/${PLIST_LABEL}`]);
+export interface MacServiceInfo {
+  state: string;
+  pid?: string;
 }
 
-function macStatus(): void {
+/** Parse `launchctl print` output; the pid field disappears once the process is gone. */
+export function parseLaunchctlPrint(output: string): MacServiceInfo {
+  return {
+    // States can be multi-word ("not running"), so capture to end of line.
+    state: output.match(/state\s*=\s*(.+)/)?.[1].trim() ?? 'unknown',
+    pid: output.match(/pid\s*=\s*(\d+)/)?.[1],
+  };
+}
+
+function isServiceRunning(info: MacServiceInfo | null): boolean {
+  return info !== null && info.pid !== undefined && info.state === 'running';
+}
+
+// Grace window for the gateway to drain in-flight work and exit after SIGTERM.
+const MAC_STOP_TIMEOUT_MS = 10_000;
+const MAC_STOP_POLL_MS = 250;
+
+function blockingSleep(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * Poll `probe` until the service no longer reports a live process — unloaded,
+ * no pid, or a state other than "running". Returns false if it is still alive
+ * when `timeoutMs` elapses. `now`/`sleep` are injectable for tests.
+ */
+export function waitForServiceExit(
+  probe: () => MacServiceInfo | null,
+  options: {
+    timeoutMs?: number;
+    pollMs?: number;
+    now?: () => number;
+    sleep?: (ms: number) => void;
+  } = {},
+): boolean {
+  const {
+    timeoutMs = MAC_STOP_TIMEOUT_MS,
+    pollMs = MAC_STOP_POLL_MS,
+    now = Date.now,
+    sleep = blockingSleep,
+  } = options;
+  const deadline = now() + timeoutMs;
+
+  while (isServiceRunning(probe())) {
+    if (now() >= deadline) return false;
+    sleep(pollMs);
+  }
+
+  return true;
+}
+
+/**
+ * SIGTERM, then block until the process is gone: launchctl kill returns
+ * immediately, and a `start` (kickstart) issued while the old process is
+ * still draining is a silent no-op that leaves the service stopped.
+ */
+function macStop(): void {
+  if (!isServiceRunning(macServiceInfo())) return;
+  run('launchctl', ['kill', 'SIGTERM', `gui/${macUid()}/${PLIST_LABEL}`]);
+
+  if (!waitForServiceExit(macServiceInfo)) {
+    throw new Error(
+      `Service "${PLIST_LABEL}" is still running ${MAC_STOP_TIMEOUT_MS / 1000}s after SIGTERM.`,
+    );
+  }
+}
+
+function macServiceInfo(): MacServiceInfo | null {
   const result = spawnSync('launchctl', ['print', `gui/${macUid()}/${PLIST_LABEL}`], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+  if (result.status !== 0) return null;
+  return parseLaunchctlPrint(result.stdout);
+}
 
-  if (result.status !== 0) {
+function macStatus(): void {
+  const info = macServiceInfo();
+  if (!info) {
     console.log(`Service "${PLIST_LABEL}" is not loaded.`);
     return;
   }
 
-  const output = result.stdout;
-  const state = output.match(/state\s*=\s*(\S+)/)?.[1] ?? 'unknown';
-  const pid = output.match(/pid\s*=\s*(\d+)/)?.[1];
+  const { state, pid } = info;
   console.log(`Service "${PLIST_LABEL}" is loaded.`);
   console.log(`  state: ${state}`);
   if (pid) console.log(`  pid:   ${pid}`);
