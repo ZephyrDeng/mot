@@ -1,20 +1,13 @@
 import { parse } from 'dotenv';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isAbsolute, resolve } from 'node:path';
 
 const APP_DIR = 'mot';
-/** Pre-rename directory name; still honored so pi-tag installs keep working. */
-const LEGACY_APP_DIR = 'pitag';
 const DEFAULT_CONFIG_PATH = defaultConfigPath();
 const DEFAULT_DATA_DIR = defaultDataDir();
 const LEGACY_ENV_PATH = resolve(process.cwd(), '.env');
 const CONFIG_SOURCE = buildConfigSource();
-
-/** Prefer the new location; fall back to the legacy one only if it exists and the new one doesn't. */
-function preferExisting(current: string, legacy: string): string {
-  return !existsSync(current) && existsSync(legacy) ? legacy : current;
-}
 
 function platformConfigPath(app: string): string {
   switch (process.platform) {
@@ -43,15 +36,15 @@ function platformDataDir(app: string): string {
 }
 
 function defaultConfigPath(): string {
-  return preferExisting(platformConfigPath(APP_DIR), platformConfigPath(LEGACY_APP_DIR));
+  return platformConfigPath(APP_DIR);
 }
 
 export function defaultDataDir(): string {
-  return preferExisting(platformDataDir(APP_DIR), platformDataDir(LEGACY_APP_DIR));
+  return platformDataDir(APP_DIR);
 }
 
 export function resolveConfigPath(): string {
-  const configuredPath = (process.env.MOT_CONFIG || process.env.PITAG_CONFIG || '').trim();
+  const configuredPath = process.env.MOT_CONFIG?.trim() ?? '';
   if (configuredPath) {
     return resolveUserPath(configuredPath);
   }
@@ -186,7 +179,7 @@ export const config = {
   dbPath: env('DB_PATH', resolve(DEFAULT_DATA_DIR, 'gateway.db')),
 
   /** Bot trigger name (default: bot's own display name) */
-  triggerName: env('TRIGGER_NAME', 'pi'),
+  triggerName: env('TRIGGER_NAME', 'mot'),
 
   /** Max concurrent agent invocations */
   maxConcurrency: envInt('MAX_CONCURRENCY', 3, { min: 1 }),
@@ -218,13 +211,13 @@ export const config = {
   /** Channel access policy: open, open-trigger, or allowlist */
   channelPolicy: parseChannelPolicy(env('CHANNEL_POLICY', 'allowlist')),
 
-  /** Roots searched by `/pi bind <name>` (comma-separated, `~` allowed) */
+  /** Roots searched by `/mot bind <name>` (comma-separated, `~` allowed) */
   projectRoots: env('PROJECT_ROOTS', homedir())
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
 
-  /** Slack user IDs allowed to run `/pi bind` (empty disables it) */
+  /** Slack user IDs allowed to run `/mot bind` (empty disables it) */
   adminUsers: new Set(
     env('ADMIN_USERS')
       .split(',')

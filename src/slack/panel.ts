@@ -1,5 +1,5 @@
 /**
- * Block Kit control panel for the bare `/pi` command.
+ * Block Kit control panel for the bare `/mot` command.
  *
  * Pure block builders — no I/O — so the layout is unit-testable. The slash
  * command and the block-action handlers in commands.ts assemble PanelState,
@@ -105,7 +105,7 @@ function buildModelSelect(state: PanelState): ActionsBlock | null {
         action_id: PANEL_ACTIONS.model,
         placeholder: {
           type: 'plain_text',
-          text: overflow > 0 ? `Switch model… (+${overflow} more via /pi model)` : 'Switch model…',
+          text: overflow > 0 ? `Switch model… (+${overflow} more via /mot model)` : 'Switch model…',
         },
         options,
         ...(initial ? { initial_option: initial } : {}),
@@ -183,7 +183,7 @@ function footer(): ContextBlock {
     elements: [
       {
         type: 'mrkdwn',
-        text: 'Text commands still work: `/pi status · model <ref> · models · reset-model · thinking <level> · new · stop`',
+        text: 'Text commands still work: `/mot status · model <ref> · models · reset-model · thinking <level> · new · stop`',
       },
     ],
   };

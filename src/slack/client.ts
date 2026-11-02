@@ -361,7 +361,7 @@ async function sendUnregisteredNotice(
   await sendResponse(
     jid,
     `${where} not registered with the pi gateway, so messages here are ignored. ` +
-      `An admin can run \`/pi bind <dir>\` here, or on the gateway host:\n\`mot register ${channelId} "<name>"\``,
+      `An admin can run \`/mot bind <dir>\` here, or on the gateway host:\n\`mot register ${channelId} "<name>"\``,
     { threadTs },
   );
   logger.info({ jid }, 'Sent unregistered-channel notice');

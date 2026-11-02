@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-11-02
+
+### Changed
+
+- **Breaking:** the Slack slash command is now `/mot` (was `/pi`); update the command in your Slack app (the bundled manifest already uses `/mot`)
+- Default trigger name is `mot`; the manifest names the app and bot user Mot
+- Removed the fallback to legacy `pitag` config/data directories and `PITAG_CONFIG`; use `mot/` and `MOT_CONFIG`
+
 ## [0.3.1] - 2026-11-02
 
 ### Changed

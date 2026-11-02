@@ -13,7 +13,7 @@
 #      connections:write scope and copy it (xapp-...).
 #   3. Run `mot setup` and paste both tokens.
 display_information:
-  name: pi
+  name: Mot
   description: Chat with the pi coding agent from Slack — sessions, files, and scheduled tasks in any channel or DM
   background_color: '#1a1d21'
 features:
@@ -23,11 +23,11 @@ features:
     messages_tab_enabled: true
     messages_tab_read_only_enabled: false
   bot_user:
-    display_name: pi
+    display_name: mot
     always_online: true
   slash_commands:
-    - command: /pi
-      description: Manage the pi gateway session in this channel
+    - command: /mot
+      description: Manage the Mot session in this channel
       usage_hint: '[status | model <ref> | models | reset-model | thinking <level> | new | stop]'
       should_escape: false
 oauth_config:

@@ -18,7 +18,6 @@ const CONFIG_ENV_KEYS = [
   'MAX_TOTAL_ATTACHMENT_BYTES',
   'MEDIA_RETENTION_HOURS',
   'MOT_CONFIG',
-  'PITAG_CONFIG',
   'PI_BIN',
   'PI_CWD',
   'PI_EXTRA_FLAGS',
@@ -160,32 +159,6 @@ describe('config loading', () => {
     const dataDir = expectedDefaultDataDir(homeDir);
     expect(config.dbPath).toBe(resolve(dataDir, 'gateway.db'));
     expect(config.sessionsDir).toBe(resolve(dataDir, 'sessions'));
-  });
-
-  it('keeps using a legacy pitag data directory when no mot one exists', async () => {
-    const homeDir = createTempDir();
-    const workDir = createTempDir();
-
-    process.chdir(workDir);
-    stubHomeDir(homeDir);
-    delete process.env.MOT_CONFIG;
-    delete process.env.DB_PATH;
-    delete process.env.SESSIONS_DIR;
-    const legacyDir = expectedDefaultDataDir(homeDir).replace(/mot$/, 'pitag');
-    mkdirSync(legacyDir, { recursive: true });
-
-    const { config } = await loadConfigModule();
-
-    expect(config.dbPath).toBe(resolve(legacyDir, 'gateway.db'));
-  });
-
-  it('honors the legacy PITAG_CONFIG variable', async () => {
-    delete process.env.MOT_CONFIG;
-    process.env.PITAG_CONFIG = '~/legacy/config.env';
-
-    const { resolveConfigPath } = await loadConfigModule();
-
-    expect(resolveConfigPath()).toBe(resolve(homedir(), 'legacy/config.env'));
   });
 
   it('defaults dmPolicy to open and replyInThread to true', async () => {

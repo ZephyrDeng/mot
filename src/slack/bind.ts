@@ -1,5 +1,5 @@
 /**
- * Resolve the working directory for `/pi bind [name|path]`.
+ * Resolve the working directory for `/mot bind [name|path]`.
  *
  * - absolute or `~/` path → used as-is (must be an existing directory)
  * - bare name (defaults to the channel name) → `<root>/<name>` for each root

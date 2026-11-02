@@ -1,11 +1,11 @@
 /**
- * /pi slash command and its Block Kit control panel.
+ * /mot slash command and its Block Kit control panel.
  *
  * Slack has no per-command autocomplete or typed subcommands, so a single
- * global /pi command carries text subcommands:
+ * global /mot command carries text subcommands:
  *   status | model <ref> | models | reset-model | thinking <level> | new | stop | bind [name|path]
- * A bare `/pi` opens an interactive panel (model/thinking pickers, new-session
- * and stop buttons) instead of a text usage dump; `/pi help` prints the text
+ * A bare `/mot` opens an interactive panel (model/thinking pickers, new-session
+ * and stop buttons) instead of a text usage dump; `/mot help` prints the text
  * usage. Replies are ephemeral (respond() posts to the response_url).
  */
 
@@ -55,7 +55,7 @@ import { rotateChannelSessionDir } from '../session/path.js';
 import { THINKING_LEVELS, type RegisteredChannel, type ThinkingLevel } from '../types.js';
 
 export function registerCommands(app: App): void {
-  app.command('/pi', async ({ command, ack, respond }) => {
+  app.command('/mot', async ({ command, ack, respond }) => {
     // Slash commands must be acked within 3s; respond() stays valid for 30min.
     await ack();
 
@@ -98,7 +98,7 @@ export function registerCommands(app: App): void {
           await respond(`Unknown subcommand: ${subcommand}\n${usageMessage()}`);
       }
     } catch (err: any) {
-      logger.error({ err: err.message, command: '/pi', subcommand }, 'Slash command failed');
+      logger.error({ err: err.message, command: '/mot', subcommand }, 'Slash command failed');
       try {
         await respond(`⚠️ ${err.message}`);
       } catch {
@@ -107,7 +107,7 @@ export function registerCommands(app: App): void {
     }
   });
   registerPanelActions(app);
-  logger.info('Registered /pi slash command handler');
+  logger.info('Registered /mot slash command handler');
 }
 
 // ── Block Kit panel ──
@@ -223,7 +223,7 @@ function registerPanelAction<A extends BlockElementAction>(
 
 function usageMessage(): string {
   return [
-    'Usage: `/pi <subcommand>` — a bare `/pi` opens the interactive panel.',
+    'Usage: `/mot <subcommand>` — a bare `/mot` opens the interactive panel.',
     '• `status` — show the current model and thinking configuration',
     '• `model <ref>` — set the default model for this channel',
     '• `models` — list the models pi can currently use',
@@ -238,7 +238,7 @@ function usageMessage(): string {
 async function handleBind(command: SlashCommand, respond: RespondFn, input: string): Promise<void> {
   if (!config.adminUsers.has(command.user_id)) {
     await respond(
-      `⛔ \`/pi bind\` is limited to gateway admins. Add your user ID (\`${command.user_id}\`) to \`ADMIN_USERS\` in the gateway config.`,
+      `⛔ \`/mot bind\` is limited to gateway admins. Add your user ID (\`${command.user_id}\`) to \`ADMIN_USERS\` in the gateway config.`,
     );
     return;
   }
@@ -268,7 +268,7 @@ async function handleBind(command: SlashCommand, respond: RespondFn, input: stri
     thinkingOverride: existing?.thinkingOverride ?? '',
     cwdOverride: target.cwd,
   });
-  logger.info({ jid, cwd: target.cwd, by: command.user_id }, 'Channel bound via /pi bind');
+  logger.info({ jid, cwd: target.cwd, by: command.user_id }, 'Channel bound via /mot bind');
 
   const note = existing ? '' : ' Mention the bot to start a session.';
   await respond(`✅ Bound to \`${target.cwd}\`.${note} Takes effect on the next message.`);
@@ -376,7 +376,7 @@ async function handleModelSet(
   }
 
   if (!selectedRef) {
-    await respond('Usage: `/pi model <ref>` — run `/pi models` to list available models.');
+    await respond('Usage: `/mot model <ref>` — run `/mot models` to list available models.');
     return;
   }
 
@@ -392,7 +392,7 @@ async function applyModelSelection(
   const selectedModel = resolveModelReference(selectedRef, models);
   if (!selectedModel) {
     return [
-      `No available model matches: ${selectedRef}. Run \`/pi models\` to list available models.`,
+      `No available model matches: ${selectedRef}. Run \`/mot models\` to list available models.`,
     ];
   }
 
@@ -509,7 +509,7 @@ function ensureManagedChannel(command: SlashCommand): RegisteredChannel | undefi
 }
 
 function notRegisteredMessage(): string {
-  return 'This channel is not registered yet. An admin can run `/pi bind <dir>` here, or send a regular message first — the gateway auto-registers it when channel policy is `open` or `open-trigger`.';
+  return 'This channel is not registered yet. An admin can run `/mot bind <dir>` here, or send a regular message first — the gateway auto-registers it when channel policy is `open` or `open-trigger`.';
 }
 
 function formatModelList(lines: string[]): string {
@@ -524,11 +524,11 @@ function formatModelList(lines: string[]): string {
   }
 
   const parts = [
-    `Available models (${lines.length}) — set one with \`/pi model <ref>\`:`,
+    `Available models (${lines.length}) — set one with \`/mot model <ref>\`:`,
     `\`\`\`text\n${body.trimEnd()}\n\`\`\``,
   ];
   if (shown < lines.length) {
-    parts.push(`…and ${lines.length - shown} more. \`/pi model <ref>\` matches fuzzily.`);
+    parts.push(`…and ${lines.length - shown} more. \`/mot model <ref>\` matches fuzzily.`);
   }
   return parts.join('\n');
 }

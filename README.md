@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-blue" alt="platform">
 </p>
 
-Mot puts the [pi coding agent](https://github.com/badlogic/pi-mono) in Slack. Chat with pi in DMs, channels, and threads — from your desktop or your phone. Each channel is its own persistent session with its own working directory and model; pi reads the files you drop into Slack and sends files back; recurring tasks run on a schedule; an interactive `/pi` panel switches models and thinking levels with a click.
+Mot puts the [pi coding agent](https://github.com/badlogic/pi-mono) in Slack. Chat with pi in DMs, channels, and threads — from your desktop or your phone. Each channel is its own persistent session with its own working directory and model; pi reads the files you drop into Slack and sends files back; recurring tasks run on a schedule; an interactive `/mot` panel switches models and thinking levels with a click.
 
 > Mot is a fork of [pi-tag](https://github.com/Crokily/pi-tag) by [@Crokily](https://github.com/Crokily). See [What's different from pi-tag](#whats-different-from-pi-tag).
 
@@ -35,36 +35,36 @@ The wizard checks prerequisites, walks you through creating the Slack app, asks 
 2. **Install it to your workspace** — _OAuth & Permissions_ → _Install to Workspace_, copy the **Bot User OAuth Token** (`xoxb-…`).
 3. **Create the app-level token** — _Basic Information_ → _App-Level Tokens_ → generate one with the `connections:write` scope, copy it (`xapp-…`).
 4. **Run `mot setup`** and paste both tokens.
-5. **Talk** — open a DM with the bot, or `/invite @pi` to a channel and register it (see [Access control](#access-control)).
+5. **Talk** — open a DM with the bot, or `/invite @mot` to a channel and register it (see [Access control](#access-control)).
 
 The app uses Socket Mode: the gateway opens an outbound WebSocket, so no public URL or inbound ports are needed.
 
-## Talking to pi
+## Talking to Mot
 
 - **DMs** — every message reaches pi (default `DM_POLICY=open`). Great from the Slack mobile app: kick off a task from your phone, get the result when it's done.
-- **Channels** — register a channel and pi joins the conversation. In trigger-gated channels, summon it by @mentioning the bot or starting your message with its trigger name: `@pi fix the build` and `pi fix the build` both work (`TRIGGER_NAME`, matched only at the start of a message).
+- **Channels** — register a channel and Mot joins the conversation. In trigger-gated channels, summon it by @mentioning the bot or starting your message with its trigger name: `@mot fix the build` and `mot fix the build` both work (`TRIGGER_NAME`, matched only at the start of a message).
 - **Threads** — trigger pi inside a thread and the answer lands in that thread (`REPLY_IN_THREAD=true` by default). Threads share the channel's session; they're a reply location, not a separate conversation.
-- While pi works, the thread shows Slack's native status ("pi is running bash…"); long answers are posted as Markdown and split at Slack's 4,000-character limit.
+- While pi works, the thread shows Slack's native status ("Mot is running bash…"); long answers are posted as Markdown and split at Slack's 4,000-character limit.
 - Summoning the bot in an unregistered channel gets a short registration hint instead of silence (rate-limited to once per 10 minutes per channel).
 
-## The `/pi` panel
+## The `/mot` panel
 
-A bare `/pi` opens an interactive control panel (ephemeral — only you see it): session status at a glance, model and thinking-level dropdowns picked straight from pi's catalog, and New session / Stop buttons with confirmation. No subcommands or model refs to remember.
+A bare `/mot` opens an interactive control panel (ephemeral — only you see it): session status at a glance, model and thinking-level dropdowns picked straight from pi's catalog, and New session / Stop buttons with confirmation. No subcommands or model refs to remember.
 
 Text subcommands still work for muscle memory:
 
-| Subcommand          | Description                                                                                                                        |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `/pi`               | Open the interactive panel                                                                                                         |
-| `/pi help`          | Show text usage                                                                                                                    |
-| `/pi status`        | Show model, thinking, working directory, session info, token usage                                                                 |
-| `/pi model <ref>`   | Set the channel's model (fuzzy-matched against pi's catalog)                                                                       |
-| `/pi models`        | List the models pi can currently use                                                                                               |
-| `/pi reset-model`   | Clear the channel's model override                                                                                                 |
-| `/pi thinking <lv>` | Set thinking level: off / minimal / low / medium / high / xhigh                                                                    |
-| `/pi new`           | Start a fresh session for this channel                                                                                             |
-| `/pi stop`          | Abort the current task and clear queued messages                                                                                   |
-| `/pi bind [dir]`    | Admins: register this channel with a working directory (name under `PROJECT_ROOTS`, absolute path, or the channel name by default) |
+| Subcommand           | Description                                                                                                                        |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `/mot`               | Open the interactive panel                                                                                                         |
+| `/mot help`          | Show text usage                                                                                                                    |
+| `/mot status`        | Show model, thinking, working directory, session info, token usage                                                                 |
+| `/mot model <ref>`   | Set the channel's model (fuzzy-matched against pi's catalog)                                                                       |
+| `/mot models`        | List the models pi can currently use                                                                                               |
+| `/mot reset-model`   | Clear the channel's model override                                                                                                 |
+| `/mot thinking <lv>` | Set thinking level: off / minimal / low / medium / high / xhigh                                                                    |
+| `/mot new`           | Start a fresh session for this channel                                                                                             |
+| `/mot stop`          | Abort the current task and clear queued messages                                                                                   |
+| `/mot bind [dir]`    | Admins: register this channel with a working directory (name under `PROJECT_ROOTS`, absolute path, or the channel name by default) |
 
 The model list comes from your installed pi and honors its `enabledModels` scope, so it stays in sync as pi adds or removes models.
 
@@ -85,8 +85,8 @@ pi runs `mot task add` behind the scenes — 5-field cron for recurring tasks, a
 ## Sessions
 
 - **One session per channel.** Each registered channel or DM maps to its own pi session; history persists across messages via `pi --continue`.
-- **Per-channel setup.** Point a channel at a project with `mot register <id> <name> --cwd /path/to/repo`, and give it its own model and thinking level via `/pi` — overrides stick to the channel.
-- **`/pi new` rotates the session** — the old one is archived and cleaned up after `ARCHIVE_RETENTION_DAYS`.
+- **Per-channel setup.** Point a channel at a project with `mot register <id> <name> --cwd /path/to/repo`, and give it its own model and thinking level via `/mot` — overrides stick to the channel.
+- **`/mot new` rotates the session** — the old one is archived and cleaned up after `ARCHIVE_RETENTION_DAYS`.
 
 ## Access control
 
@@ -108,7 +108,7 @@ Whoever can message the bot drives a coding agent with shell and filesystem acce
 | `allowlist` | Only DMs registered via `mot register` get responses.     |
 | `disabled`  | All DMs are ignored.                                      |
 
-- Slack only delivers channel messages after the bot is **invited** (`/invite @pi`), so even `open` mode is gated by the invite.
+- Slack only delivers channel messages after the bot is **invited** (`/invite @mot`), so even `open` mode is gated by the invite.
 - Register channels by **channel ID** (`C…` public, `G…` private, `D…` DM — bottom of the channel's _About_ tab), not `#name`:
 
   ```bash
@@ -150,33 +150,33 @@ Run **exactly one** gateway instance per Slack app — Socket Mode load-balances
 
 `mot setup` generates the config file for you; `mot status` shows its path (Linux: `~/.config/mot/config.env`, macOS: `~/Library/Application Support/mot/config.env`, Windows: `%APPDATA%\mot\config.env`). The `MOT_CONFIG` environment variable overrides the location. After changes, restart: `mot daemon stop && mot daemon start`.
 
-| Variable                     | Default                         | Description                                                                  |
-| ---------------------------- | ------------------------------- | ---------------------------------------------------------------------------- |
-| `SLACK_BOT_TOKEN`            | _(required)_                    | Bot User OAuth Token (`xoxb-…`)                                              |
-| `SLACK_APP_TOKEN`            | _(required)_                    | App-level token with `connections:write` for Socket Mode (`xapp-…`)          |
-| `PI_BIN`                     | `pi`                            | Path to pi binary                                                            |
-| `PI_MODEL`                   | _(none)_                        | Default model override                                                       |
-| `PI_THINKING`                | _(none)_                        | Default thinking level                                                       |
-| `PI_CWD`                     | `$HOME`                         | Default working directory for pi; can be overridden per registered channel   |
-| `PI_EXTRA_FLAGS`             | _(none)_                        | Extra flags passed to pi                                                     |
-| `TRIGGER_NAME`               | `pi`                            | Bot trigger name for summoning in channels                                   |
-| `CHANNEL_POLICY`             | `allowlist`                     | Channel access: `open`, `open-trigger`, or `allowlist`                       |
-| `PROJECT_ROOTS`              | `$HOME`                         | Comma-separated roots `/pi bind <name>` searches for `<root>/<name>`         |
-| `ADMIN_USERS`                | _(none)_                        | Comma-separated Slack user IDs allowed to run `/pi bind` (empty disables it) |
-| `EXCLUDED_CHANNELS`          | _(none)_                        | Comma-separated channel IDs to exclude from auto-registration                |
-| `DM_POLICY`                  | `open`                          | DM access: `open`, `allowlist`, or `disabled`                                |
-| `REPLY_IN_THREAD`            | `true`                          | Post responses into the triggering message's thread when it has one          |
-| `MAX_CONCURRENCY`            | `3`                             | Max parallel pi invocations                                                  |
-| `MAX_SCHEDULED_CONCURRENCY`  | `1`                             | Max scheduled tasks enqueued per tick                                        |
-| `POLL_INTERVAL_MS`           | `1000`                          | Queue poll interval (ms)                                                     |
-| `SHUTDOWN_TIMEOUT_MS`        | `15000`                         | Graceful shutdown timeout (ms)                                               |
-| `ARCHIVE_RETENTION_DAYS`     | `30`                            | Days to keep archived sessions (0 = never clean)                             |
-| `MAX_ATTACHMENT_BYTES`       | `26214400`                      | Max size per attachment (0 = no limit)                                       |
-| `MAX_TOTAL_ATTACHMENT_BYTES` | `52428800`                      | Max combined attachment size per message (0 = no limit)                      |
-| `MEDIA_RETENTION_HOURS`      | `168`                           | Hours to keep downloaded attachment files for path-based agent access        |
-| `SESSIONS_DIR`               | _(platform default)_/sessions   | Session storage directory                                                    |
-| `DB_PATH`                    | _(platform default)_/gateway.db | SQLite database path                                                         |
-| `LOG_LEVEL`                  | `info`                          | Log level: debug/info/warn/error                                             |
+| Variable                     | Default                         | Description                                                                   |
+| ---------------------------- | ------------------------------- | ----------------------------------------------------------------------------- |
+| `SLACK_BOT_TOKEN`            | _(required)_                    | Bot User OAuth Token (`xoxb-…`)                                               |
+| `SLACK_APP_TOKEN`            | _(required)_                    | App-level token with `connections:write` for Socket Mode (`xapp-…`)           |
+| `PI_BIN`                     | `pi`                            | Path to pi binary                                                             |
+| `PI_MODEL`                   | _(none)_                        | Default model override                                                        |
+| `PI_THINKING`                | _(none)_                        | Default thinking level                                                        |
+| `PI_CWD`                     | `$HOME`                         | Default working directory for pi; can be overridden per registered channel    |
+| `PI_EXTRA_FLAGS`             | _(none)_                        | Extra flags passed to pi                                                      |
+| `TRIGGER_NAME`               | `mot`                           | Bot trigger name for summoning in channels                                    |
+| `CHANNEL_POLICY`             | `allowlist`                     | Channel access: `open`, `open-trigger`, or `allowlist`                        |
+| `PROJECT_ROOTS`              | `$HOME`                         | Comma-separated roots `/mot bind <name>` searches for `<root>/<name>`         |
+| `ADMIN_USERS`                | _(none)_                        | Comma-separated Slack user IDs allowed to run `/mot bind` (empty disables it) |
+| `EXCLUDED_CHANNELS`          | _(none)_                        | Comma-separated channel IDs to exclude from auto-registration                 |
+| `DM_POLICY`                  | `open`                          | DM access: `open`, `allowlist`, or `disabled`                                 |
+| `REPLY_IN_THREAD`            | `true`                          | Post responses into the triggering message's thread when it has one           |
+| `MAX_CONCURRENCY`            | `3`                             | Max parallel pi invocations                                                   |
+| `MAX_SCHEDULED_CONCURRENCY`  | `1`                             | Max scheduled tasks enqueued per tick                                         |
+| `POLL_INTERVAL_MS`           | `1000`                          | Queue poll interval (ms)                                                      |
+| `SHUTDOWN_TIMEOUT_MS`        | `15000`                         | Graceful shutdown timeout (ms)                                                |
+| `ARCHIVE_RETENTION_DAYS`     | `30`                            | Days to keep archived sessions (0 = never clean)                              |
+| `MAX_ATTACHMENT_BYTES`       | `26214400`                      | Max size per attachment (0 = no limit)                                        |
+| `MAX_TOTAL_ATTACHMENT_BYTES` | `52428800`                      | Max combined attachment size per message (0 = no limit)                       |
+| `MEDIA_RETENTION_HOURS`      | `168`                           | Hours to keep downloaded attachment files for path-based agent access         |
+| `SESSIONS_DIR`               | _(platform default)_/sessions   | Session storage directory                                                     |
+| `DB_PATH`                    | _(platform default)_/gateway.db | SQLite database path                                                          |
+| `LOG_LEVEL`                  | `info`                          | Log level: debug/info/warn/error                                              |
 
 Data lives next to the config: `~/.local/share/mot/` on Linux, `~/Library/Application Support/mot/` on macOS, `%LOCALAPPDATA%\mot\` on Windows.
 
@@ -214,7 +214,7 @@ Channel jids are the Slack channel ID with an `sl:` prefix (e.g. `sl:C0123456789
 `mot status` shows "Pi binary: not found".
 
 - Check `pi --version` works in the same shell
-- Set `PI_BIN=/full/path/to/pi` in config.env
+- Set `PI_BIN=/full/path/to/mot` in config.env
 - Restart: `mot daemon stop && mot daemon start`
 </details>
 
@@ -239,10 +239,10 @@ Channel jids are the Slack channel ID with an `sl:` prefix (e.g. `sl:C0123456789
 <details>
 <summary><strong>Bot is online but doesn't respond</strong></summary>
 
-- The bot must be **invited** to a channel before Slack delivers its messages: `/invite @pi`
+- The bot must be **invited** to a channel before Slack delivers its messages: `/invite @mot`
 - `allowlist` policy (the default): run `mot channels` — the channel must be registered by its ID
 - `open` policy: check `EXCLUDED_CHANNELS` doesn't include your channel
-- For trigger-only channels: mention the bot (`@pi …`) or start the message with the trigger name
+- For trigger-only channels: mention the bot (`@mot …`) or start the message with the trigger name
 - DMs: check `DM_POLICY` isn't `disabled`
 - Verify both tokens with `mot status` (`xoxb-…` bot token and `xapp-…` app token)
 </details>
@@ -284,10 +284,12 @@ Mot tracks [pi-tag](https://github.com/Crokily/pi-tag) v0.2.1 and adds:
 
 - **pi-coding-agent 1.x support** — model catalog works with the 1.x SDK surface.
 - **Native thread status** — Slack's built-in "is running…" indicator replaces the busy reaction.
-- **`/pi bind [dir]`** — admins register a channel and its working directory from Slack, no terminal needed.
+- **`/mot bind [dir]`** — admins register a channel and its working directory from Slack, no terminal needed.
 - **Voice messages** — audio attachments are transcribed (ZenMux ASR, opt-in via `ZENMUX_API_KEY`; `ffmpeg` needed for non-mp3/wav input) and handed to pi as the message text.
 
-Upgrading from pi-tag: the command is now `mot` and the config variable is `MOT_CONFIG`. Existing `pitag` config/data directories and `PITAG_CONFIG` are still picked up automatically. The background service is renamed (`mot` / `com.mot`), so run `pitag daemon uninstall` before `mot daemon install`.
+Everything user-facing is named Mot: the `mot` command, the `/mot` slash command, the `mot` trigger name, `MOT_CONFIG`, the `mot` / `com.mot` service, and `mot/` config and data directories.
+
+Coming from pi-tag: run `pitag daemon uninstall`, rename your `pitag/` config and data directory to `mot/` (and update `SESSIONS_DIR` / `DB_PATH` in `config.env` if set), change the Slack app's slash command to `/mot`, then `mot daemon install && mot daemon start`.
 
 ## License
 

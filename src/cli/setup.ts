@@ -8,7 +8,7 @@ import type { DmPolicy } from '../config.js';
 import { defaultDataDir, resolveConfigPath, validateSlackTokens } from '../config.js';
 
 const SERVICE_NAME = 'mot';
-const DEFAULT_TRIGGER_NAME = 'pi';
+const DEFAULT_TRIGGER_NAME = 'mot';
 const DEFAULT_WORKING_DIR = homedir();
 const DEFAULT_DATA_DIR = defaultDataDir();
 const DEFAULT_SESSIONS_DIR = resolve(DEFAULT_DATA_DIR, 'sessions');
@@ -55,7 +55,7 @@ export async function runSetup(args: string[]): Promise<void> {
         '1. Open https://api.slack.com/apps and click "Create New App"',
         '2. Choose "From a manifest", pick your workspace, and paste the',
         '   contents of manifest.yaml from this repository',
-        '   (Socket Mode, scopes, and the /pi command are preconfigured)',
+        '   (Socket Mode, scopes, and the /mot command are preconfigured)',
         '3. Click "Install to Workspace" and approve the permissions',
         '4. OAuth & Permissions → copy the Bot User OAuth Token (xoxb-…)',
         '5. Basic Information → App-Level Tokens → generate a token with',
