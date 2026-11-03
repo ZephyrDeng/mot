@@ -3,7 +3,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { WebClient } from '@slack/web-api';
-import { config, resolveConfigPath, validateSlackTokens } from '../config.js';
+import { config, resolveConfigPath, validateSlackTokens, validateSlashCommand } from '../config.js';
 import { closeDb, getAllChannels, initDb } from '../db.js';
 
 const AUTH_PATH = resolve(homedir(), '.pi/agent/auth.json');
@@ -28,6 +28,9 @@ export async function runStatus(): Promise<void> {
     `Pi auth: ${authStatus ? `found (${AUTH_PATH})` : `missing (${AUTH_PATH})`}`,
     `Pi working dir: ${config.piCwd}`,
     `Slack auth: ${slackAuth}`,
+    `Instance: ${config.instanceName}`,
+    `Slash command: ${config.slashCommand}${validateSlashCommand(config.slashCommand).length > 0 ? ' (invalid — see SLASH_COMMAND)' : ''}`,
+    `Trigger: @${config.triggerName}`,
     `Config path: ${configPath}`,
     `Gateway service: ${serviceStatus}`,
     `Database: ${config.dbPath}`,

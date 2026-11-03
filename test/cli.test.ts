@@ -48,6 +48,8 @@ describe('formatHelpText', () => {
     expect(help).toContain('mot setup');
     expect(help).toContain('mot start');
     expect(help).toContain('mot status');
+    expect(help).toContain('mot manifest');
+    expect(help).toContain('ONE SLACK APP PER GATEWAY');
     expect(help).toContain('mot register');
     expect(help).toContain('mot daemon install');
     expect(help).toContain('mot send --channel <jid> [--text <message>] [--file <path> ...]');
@@ -135,5 +137,19 @@ describe('register command cwd support', () => {
     logged.length = 0;
     await expect(main(['channels'])).resolves.toBe(0);
     expect(logged.join('\n')).toContain('cwd=/workspace/project (channel)');
+  });
+});
+
+describe('mot manifest', () => {
+  it('parses flags and rejects unknown or incomplete ones', async () => {
+    vi.resetModules();
+    const { parseManifestArgs } = await import('../src/cli/index.js');
+
+    expect(
+      parseManifestArgs(['--name', 'Mot MacBook', '--command', '/motmac', '--out', 'm.yaml']),
+    ).toEqual({ name: 'Mot MacBook', command: '/motmac', out: 'm.yaml' });
+    expect(() => parseManifestArgs(['--bogus', 'x'])).toThrow(/Unknown option/);
+    expect(() => parseManifestArgs(['--name'])).toThrow(/requires a value/);
+    expect(() => parseManifestArgs(['--name', '--command'])).toThrow(/requires a value/);
   });
 });

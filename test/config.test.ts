@@ -29,6 +29,8 @@ const CONFIG_ENV_KEYS = [
   'SHUTDOWN_TIMEOUT_MS',
   'SLACK_APP_TOKEN',
   'SLACK_BOT_TOKEN',
+  'SLASH_COMMAND',
+  'INSTANCE_NAME',
   'TRIGGER_NAME',
   'USERPROFILE',
 ];
@@ -264,3 +266,36 @@ async function loadConfigModule() {
   vi.resetModules();
   return import('../src/config.js');
 }
+
+describe('slash command and instance name', () => {
+  it('defaults to /mot and the hostname', async () => {
+    delete process.env.SLASH_COMMAND;
+    delete process.env.INSTANCE_NAME;
+    const { config } = await loadConfigModule();
+    const { hostname } = await import('node:os');
+
+    expect(config.slashCommand).toBe('/mot');
+    expect(config.instanceName).toBe(hostname());
+  });
+
+  it('normalizes SLASH_COMMAND and honors INSTANCE_NAME', async () => {
+    process.env.SLASH_COMMAND = ' MotMac ';
+    process.env.INSTANCE_NAME = 'macbook';
+    const { config } = await loadConfigModule();
+
+    expect(config.slashCommand).toBe('/motmac');
+    expect(config.instanceName).toBe('macbook');
+  });
+
+  it('validates slash command names', async () => {
+    const { normalizeSlashCommand, validateSlashCommand } = await loadConfigModule();
+
+    expect(normalizeSlashCommand('')).toBe('/mot');
+    expect(normalizeSlashCommand('motmac')).toBe('/motmac');
+    expect(validateSlashCommand('/motmac')).toEqual([]);
+    expect(validateSlashCommand('/mot-mac_2')).toEqual([]);
+    expect(validateSlashCommand('/mot mac')).toHaveLength(1);
+    expect(validateSlashCommand('/')).toHaveLength(1);
+    expect(validateSlashCommand(`/${'a'.repeat(32)}`)).toHaveLength(1);
+  });
+});

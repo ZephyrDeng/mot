@@ -55,7 +55,7 @@ import { rotateChannelSessionDir } from '../session/path.js';
 import { THINKING_LEVELS, type RegisteredChannel, type ThinkingLevel } from '../types.js';
 
 export function registerCommands(app: App): void {
-  app.command('/mot', async ({ command, ack, respond }) => {
+  app.command(config.slashCommand, async ({ command, ack, respond }) => {
     // Slash commands must be acked within 3s; respond() stays valid for 30min.
     await ack();
 
@@ -98,7 +98,10 @@ export function registerCommands(app: App): void {
           await respond(`Unknown subcommand: ${subcommand}\n${usageMessage()}`);
       }
     } catch (err: any) {
-      logger.error({ err: err.message, command: '/mot', subcommand }, 'Slash command failed');
+      logger.error(
+        { err: err.message, command: config.slashCommand, subcommand },
+        'Slash command failed',
+      );
       try {
         await respond(`⚠️ ${err.message}`);
       } catch {
@@ -107,7 +110,7 @@ export function registerCommands(app: App): void {
     }
   });
   registerPanelActions(app);
-  logger.info('Registered /mot slash command handler');
+  logger.info({ command: config.slashCommand }, 'Registered slash command handler');
 }
 
 // ── Block Kit panel ──
@@ -145,6 +148,8 @@ async function buildPanelState(
     currentModelRef: effective.rawModelRef || '',
     currentThinking: channel.thinkingOverride,
     notice,
+    slashCommand: config.slashCommand,
+    instance: config.instanceName,
   };
 }
 
@@ -223,7 +228,7 @@ function registerPanelAction<A extends BlockElementAction>(
 
 function usageMessage(): string {
   return [
-    'Usage: `/mot <subcommand>` — a bare `/mot` opens the interactive panel.',
+    `Usage: \`${config.slashCommand} <subcommand>\` — a bare \`${config.slashCommand}\` opens the interactive panel.`,
     '• `status` — show the current model and thinking configuration',
     '• `model <ref>` — set the default model for this channel',
     '• `models` — list the models pi can currently use',
@@ -238,7 +243,7 @@ function usageMessage(): string {
 async function handleBind(command: SlashCommand, respond: RespondFn, input: string): Promise<void> {
   if (!config.adminUsers.has(command.user_id)) {
     await respond(
-      `⛔ \`/mot bind\` is limited to gateway admins. Add your user ID (\`${command.user_id}\`) to \`ADMIN_USERS\` in the gateway config.`,
+      `⛔ \`${config.slashCommand} bind\` is limited to gateway admins. Add your user ID (\`${command.user_id}\`) to \`ADMIN_USERS\` in the gateway config.`,
     );
     return;
   }
@@ -268,7 +273,10 @@ async function handleBind(command: SlashCommand, respond: RespondFn, input: stri
     thinkingOverride: existing?.thinkingOverride ?? '',
     cwdOverride: target.cwd,
   });
-  logger.info({ jid, cwd: target.cwd, by: command.user_id }, 'Channel bound via /mot bind');
+  logger.info(
+    { jid, cwd: target.cwd, by: command.user_id },
+    'Channel bound via slash command bind',
+  );
 
   const note = existing ? '' : ' Mention the bot to start a session.';
   await respond(`✅ Bound to \`${target.cwd}\`.${note} Takes effect on the next message.`);
@@ -376,7 +384,9 @@ async function handleModelSet(
   }
 
   if (!selectedRef) {
-    await respond('Usage: `/mot model <ref>` — run `/mot models` to list available models.');
+    await respond(
+      `Usage: \`${config.slashCommand} model <ref>\` — run \`${config.slashCommand} models\` to list available models.`,
+    );
     return;
   }
 
@@ -392,7 +402,7 @@ async function applyModelSelection(
   const selectedModel = resolveModelReference(selectedRef, models);
   if (!selectedModel) {
     return [
-      `No available model matches: ${selectedRef}. Run \`/mot models\` to list available models.`,
+      `No available model matches: ${selectedRef}. Run \`${config.slashCommand} models\` to list available models.`,
     ];
   }
 
@@ -509,7 +519,7 @@ function ensureManagedChannel(command: SlashCommand): RegisteredChannel | undefi
 }
 
 function notRegisteredMessage(): string {
-  return 'This channel is not registered yet. An admin can run `/mot bind <dir>` here, or send a regular message first — the gateway auto-registers it when channel policy is `open` or `open-trigger`.';
+  return `This channel is not registered yet. An admin can run \`${config.slashCommand} bind <dir>\` here, or send a regular message first — the gateway auto-registers it when channel policy is \`open\` or \`open-trigger\`.`;
 }
 
 function formatModelList(lines: string[]): string {
@@ -524,11 +534,13 @@ function formatModelList(lines: string[]): string {
   }
 
   const parts = [
-    `Available models (${lines.length}) — set one with \`/mot model <ref>\`:`,
+    `Available models (${lines.length}) — set one with \`${config.slashCommand} model <ref>\`:`,
     `\`\`\`text\n${body.trimEnd()}\n\`\`\``,
   ];
   if (shown < lines.length) {
-    parts.push(`…and ${lines.length - shown} more. \`/mot model <ref>\` matches fuzzily.`);
+    parts.push(
+      `…and ${lines.length - shown} more. \`${config.slashCommand} model <ref>\` matches fuzzily.`,
+    );
   }
   return parts.join('\n');
 }
@@ -548,6 +560,7 @@ function buildStatusMessage(
   }
 
   rows.push(
+    ['Instance', config.instanceName],
     ['Reasoning', effective.modelInfo ? (effective.modelInfo.reasoning ? 'yes' : 'no') : 'unknown'],
     [
       'Session',

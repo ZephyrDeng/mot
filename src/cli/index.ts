@@ -20,6 +20,9 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       await runSetup(args);
       return 0;
     }
+    case 'manifest':
+      await cliManifest(args);
+      return 0;
     case 'start': {
       if (await maybeRunFirstTimeSetup()) return 0;
       checkPiDependencies();
@@ -88,6 +91,8 @@ export function formatHelpText(): string {
     '',
     'USAGE:',
     '  mot setup [bot-token] [app-token]         Interactive setup wizard',
+    '  mot manifest [--name <n>] [--bot-name <n>] [--command </cmd>] [--out <file>]',
+    '                                            Print a Slack app manifest (one app per machine)',
     '  mot start                                 Start the gateway in the foreground',
     '  mot status                                Show local diagnostics',
     '  mot archive list                          List archived sessions',
@@ -115,6 +120,13 @@ export function formatHelpText(): string {
     '  Channel jids are the ID with an "sl:" prefix (e.g. sl:C0123456789); bare IDs',
     '  are accepted anywhere a jid is and prefixed automatically.',
     '',
+    'ONE SLACK APP PER GATEWAY:',
+    '  Socket Mode splits events across every connection of the same app, so two',
+    '  machines sharing one app silently lose about half their messages. Give each',
+    '  machine its own app: run `mot manifest --name "Mot MacBook" --command /motmac`,',
+    '  create the app from the output, and set SLASH_COMMAND=/motmac (plus',
+    "  TRIGGER_NAME) in that machine's config.",
+    '',
     'REGISTER OPTIONS:',
     '  --folder <name>    Relative session folder name (default: ch_<id>)',
     '  --cwd <path>       Override PI_CWD for this channel only',
@@ -128,6 +140,58 @@ export function formatHelpText(): string {
 
 function printHelp(): void {
   console.log(formatHelpText());
+}
+
+const MANIFEST_USAGE =
+  'Usage: mot manifest [--name <app name>] [--bot-name <bot name>] [--command </command>] [--out <file>]';
+
+export function parseManifestArgs(args: string[]): {
+  name?: string;
+  botName?: string;
+  command?: string;
+  out?: string;
+} {
+  const result: { name?: string; botName?: string; command?: string; out?: string } = {};
+  for (let i = 0; i < args.length; i++) {
+    const flag = args[i];
+    const key =
+      flag === '--name'
+        ? 'name'
+        : flag === '--bot-name'
+          ? 'botName'
+          : flag === '--command'
+            ? 'command'
+            : flag === '--out'
+              ? 'out'
+              : undefined;
+    if (!key) throw new Error(`Unknown option: ${flag}\n${MANIFEST_USAGE}`);
+    const value = args[++i];
+    if (value === undefined || value.startsWith('--')) {
+      throw new Error(`${flag} requires a value.\n${MANIFEST_USAGE}`);
+    }
+    result[key] = value;
+  }
+  return result;
+}
+
+async function cliManifest(args: string[]): Promise<void> {
+  const { out, ...options } = parseManifestArgs(args);
+  const { buildManifest } = await import('../manifest.js');
+  const { normalizeSlashCommand } = await import('../config.js');
+  const manifest = buildManifest(options);
+
+  if (!out) {
+    process.stdout.write(manifest);
+    return;
+  }
+
+  const { writeFileSync } = await import('node:fs');
+  const target = resolve(out);
+  writeFileSync(target, manifest);
+  console.log(`Manifest written to: ${target}`);
+  console.log(
+    `After creating the app, set SLASH_COMMAND=${normalizeSlashCommand(options.command ?? '/mot')} in the gateway config.`,
+  );
 }
 
 async function cliRegister(args: string[]): Promise<void> {

@@ -3,12 +3,20 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import * as clack from '@clack/prompts';
+import { WebClient } from '@slack/web-api';
 import { listAvailableModels } from '../agent/model-catalog.js';
 import type { DmPolicy } from '../config.js';
-import { defaultDataDir, resolveConfigPath, validateSlackTokens } from '../config.js';
+import {
+  defaultDataDir,
+  normalizeSlashCommand,
+  resolveConfigPath,
+  validateSlackTokens,
+  validateSlashCommand,
+} from '../config.js';
 
 const SERVICE_NAME = 'mot';
 const DEFAULT_TRIGGER_NAME = 'mot';
+const DEFAULT_SLASH_COMMAND = '/mot';
 const DEFAULT_WORKING_DIR = homedir();
 const DEFAULT_DATA_DIR = defaultDataDir();
 const DEFAULT_SESSIONS_DIR = resolve(DEFAULT_DATA_DIR, 'sessions');
@@ -53,9 +61,10 @@ export async function runSetup(args: string[]): Promise<void> {
     clack.note(
       [
         '1. Open https://api.slack.com/apps and click "Create New App"',
-        '2. Choose "From a manifest", pick your workspace, and paste the',
-        '   contents of manifest.yaml from this repository',
-        '   (Socket Mode, scopes, and the /mot command are preconfigured)',
+        '2. Choose "From a manifest", pick your workspace, and paste the output of',
+        '   `mot manifest` (Socket Mode, scopes, and the slash command are',
+        '   preconfigured). Running mot on more than one machine? Give each one',
+        '   its own app: `mot manifest --name "Mot MacBook" --command /motmac`',
         '3. Click "Install to Workspace" and approve the permissions',
         '4. OAuth & Permissions → copy the Bot User OAuth Token (xoxb-…)',
         '5. Basic Information → App-Level Tokens → generate a token with',
@@ -107,20 +116,81 @@ export async function runSetup(args: string[]): Promise<void> {
     throw new Error(tokenProblems.join(' '));
   }
 
-  // ── Trigger name ──
-  let triggerName = DEFAULT_TRIGGER_NAME;
+  // ── Slack identity + shared-app guard ──
+  // Socket Mode hands each event to ONE connection of an app, so two gateways on
+  // the same app silently lose about half their messages each. Show which app
+  // these tokens belong to and make the user confirm it is not already in use.
+  if (interactive) {
+    const identity = await lookupSlackIdentity(botToken);
+    if (identity) {
+      clack.log.info(
+        `This bot token belongs to "${identity.bot}" in workspace "${identity.team}".`,
+      );
+    } else {
+      clack.log.warn(
+        'Could not verify the bot token with Slack (offline, or the token is invalid). Continuing.',
+      );
+    }
+
+    const sharedElsewhere = await clack.confirm({
+      message:
+        'Is this Slack app already used by a mot gateway on a DIFFERENT machine? (one app per gateway)',
+      initialValue: false,
+    });
+    if (clack.isCancel(sharedElsewhere)) {
+      clack.cancel('Setup cancelled.');
+      process.exit(0);
+    }
+    if (sharedElsewhere) {
+      clack.note(
+        [
+          'Two gateways on one app split its events: each silently misses about half of the messages.',
+          'Create a separate app for this machine instead:',
+          '',
+          '  mot manifest --name "Mot MacBook" --command /motmac',
+          '',
+          'Create the app from that output, install it, then run `mot setup` again with the new tokens.',
+        ].join('\n'),
+        'One Slack app per gateway',
+      );
+      clack.cancel('Setup stopped. Nothing was written.');
+      return;
+    }
+  }
+
+  // ── Slash command ──
+  let slashCommand = normalizeSlashCommand(DEFAULT_SLASH_COMMAND);
   if (interactive) {
     const result = await clack.text({
-      message: 'Trigger Name',
-      placeholder: DEFAULT_TRIGGER_NAME,
-      defaultValue: DEFAULT_TRIGGER_NAME,
-      initialValue: DEFAULT_TRIGGER_NAME,
+      message: 'Slash command (must match the command declared in your Slack app)',
+      placeholder: DEFAULT_SLASH_COMMAND,
+      defaultValue: DEFAULT_SLASH_COMMAND,
+      initialValue: DEFAULT_SLASH_COMMAND,
+      validate: (v) => validateSlashCommand(normalizeSlashCommand(v ?? ''))[0],
     });
     if (clack.isCancel(result)) {
       clack.cancel('Setup cancelled.');
       process.exit(0);
     }
-    triggerName = result || DEFAULT_TRIGGER_NAME;
+    slashCommand = normalizeSlashCommand(result || DEFAULT_SLASH_COMMAND);
+  }
+
+  // ── Trigger name ──
+  // Follows the slash command (/motmac → motmac) so a second app does not also answer to "mot".
+  const defaultTriggerName = slashCommand.slice(1) || DEFAULT_TRIGGER_NAME;
+  let triggerName = defaultTriggerName;
+  if (interactive) {
+    const result = await clack.text({
+      message: 'Trigger Name',
+      placeholder: defaultTriggerName,
+      defaultValue: defaultTriggerName,
+      initialValue: defaultTriggerName,
+    });
+    if (clack.isCancel(result)) {
+      clack.cancel('Setup cancelled.');
+      process.exit(0);
+    }
+    triggerName = result || defaultTriggerName;
   }
 
   // ── Channel policy ──
@@ -226,6 +296,7 @@ export async function runSetup(args: string[]): Promise<void> {
       botToken,
       appToken,
       triggerName,
+      slashCommand,
       workingDir,
       channelPolicy,
       dmPolicy,
@@ -274,11 +345,26 @@ export async function runSetup(args: string[]): Promise<void> {
     `DMs:       ${dmPolicy}`,
     `Threads:   ${replyInThread ? 'reply in thread' : 'reply top-level'}`,
     `Trigger:   ${triggerName}`,
+    `Command:   ${slashCommand}`,
     `Sessions:  ${DEFAULT_SESSIONS_DIR}`,
   ];
   clack.note(summaryLines.join('\n'), 'Configuration');
 
   clack.outro('Setup complete! Invite the bot to a Slack channel (/invite) or DM it to test.');
+}
+
+async function lookupSlackIdentity(
+  botToken: string,
+): Promise<{ bot: string; team: string } | undefined> {
+  try {
+    const auth = await new WebClient(botToken, {
+      timeout: 10_000,
+      retryConfig: { retries: 0 },
+    }).auth.test();
+    return { bot: auth.user ?? auth.user_id ?? 'unknown', team: auth.team ?? 'unknown' };
+  } catch {
+    return undefined;
+  }
 }
 
 function checkPrerequisites(): {
@@ -314,6 +400,7 @@ export function buildConfigFile(options: {
   botToken: string;
   appToken: string;
   triggerName: string;
+  slashCommand?: string;
   workingDir: string;
   channelPolicy?: 'open' | 'open-trigger' | 'allowlist';
   dmPolicy?: DmPolicy;
@@ -337,6 +424,10 @@ export function buildConfigFile(options: {
     '',
     '# Gateway behavior',
     `TRIGGER_NAME=${options.triggerName}`,
+    '# Must match the slash command declared in your Slack app (see: mot manifest --command)',
+    `SLASH_COMMAND=${options.slashCommand ?? DEFAULT_SLASH_COMMAND}`,
+    '# Label shown in logs and status output (default: hostname)',
+    '# INSTANCE_NAME=',
     'MAX_CONCURRENCY=3',
     'MAX_SCHEDULED_CONCURRENCY=1',
     'POLL_INTERVAL_MS=1000',

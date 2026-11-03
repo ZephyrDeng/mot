@@ -43,7 +43,7 @@ The app uses Socket Mode: the gateway opens an outbound WebSocket, so no public 
 npm install -g @zephyrdeng/mot
 ```
 
-1. **Create the Slack app** — [api.slack.com/apps](https://api.slack.com/apps) → _Create New App_ → _From a manifest_ → pick your workspace → paste [`manifest.yaml`](./manifest.yaml). The command is `/mot`.
+1. **Create the Slack app** — [api.slack.com/apps](https://api.slack.com/apps) → _Create New App_ → _From a manifest_ → pick your workspace → paste [`manifest.yaml`](./manifest.yaml) (or the output of `mot manifest`). The command is `/mot`. Already have a mot gateway on another machine? Read [Running on more than one machine](#running-on-more-than-one-machine) first.
 2. **Get the two tokens** — _OAuth & Permissions_ → _Install to Workspace_ → copy the **Bot User OAuth Token** (`xoxb-…`); _Basic Information_ → _App-Level Tokens_ → create one with the `connections:write` scope (`xapp-…`).
 3. **Run the setup wizard** — it checks prerequisites, takes both tokens, lets you pick an access policy, and offers to install a background service:
 
@@ -121,6 +121,26 @@ pi runs `mot task add` behind the scenes — 5-field cron for recurring tasks, a
 - **Per-channel setup.** Point a channel at a project with `mot register <id> <name> --cwd /path/to/repo`, and give it its own model and thinking level via `/mot` — overrides stick to the channel.
 - **`/mot new` rotates the session** — the old one is archived and cleaned up after `ARCHIVE_RETENTION_DAYS` (default 30).
 
+## Running on more than one machine
+
+**One Slack app per gateway.** Socket Mode hands each event to _one_ of the app's open connections. If two machines run a gateway with the same app's tokens, each silently receives only about half of the messages — there is no error, replies just go missing. Never reuse the tokens of an app that is already running somewhere else.
+
+Give every machine its own app instead. They can live side by side in one workspace as long as each has its own bot name and slash command:
+
+```bash
+# On the second machine — prints a manifest with a custom app name, bot name, and command
+mot manifest --name "Mot MacBook" --command /motmac            # to stdout
+mot manifest --name "Mot MacBook" --command /motmac --out mot-macbook.yaml
+```
+
+1. Create the app from that manifest ([api.slack.com/apps](https://api.slack.com/apps) → _From a manifest_), install it, and copy its two tokens.
+2. Run `mot setup` with the new tokens. It shows which bot and workspace the token belongs to, asks whether the app is already used on another machine, and asks for the slash command (it must match the manifest). It also defaults `TRIGGER_NAME` to the command name, so `@motmac` / `motmac …` reaches the right machine.
+3. Or set it by hand in `config.env`: `SLASH_COMMAND=/motmac`, `TRIGGER_NAME=motmac`.
+
+The background service is named `mot` (`com.mot` on macOS), so one user account can run only one gateway service — another reason to keep one app per machine. See [What the service does](#what-the-service-does).
+
+`mot status`, the gateway's startup log, `/mot status`, and the `/mot` panel all show the **instance name** (`INSTANCE_NAME`, default: the machine's hostname), so you can tell which machine answered.
+
 ## Access control
 
 Whoever can message the bot drives a coding agent with shell and filesystem access on the gateway machine — treat channel access accordingly. Two policies control who gets through:
@@ -177,38 +197,55 @@ mot daemon install | start | status | logs | stop | uninstall
 
 Run **exactly one** gateway instance per Slack app — Socket Mode load-balances events across connections, so a second instance silently takes half your messages.
 
+### What the service does
+
+|                          | Linux (systemd user service `mot`)           | macOS (launchd user agent `com.mot`)                                               |
+| ------------------------ | -------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Service file             | `~/.config/systemd/user/mot.service`         | `~/Library/LaunchAgents/com.mot.plist`                                             |
+| Starts                   | With your user session (`default.target`)    | When you log in (it is not a boot-time daemon)                                     |
+| After a crash            | Restarted (`Restart=on-failure`), 10 s apart | Restarted after a non-zero exit (`KeepAlive`), at least 10 s apart                 |
+| Logs (`mot daemon logs`) | `journalctl --user -u mot` (followed)        | `daemon.stdout.log` in the data directory (followed)                               |
+| Error output             | Same journal                                 | `daemon.stderr.log` in the data directory — `mot daemon logs` does **not** show it |
+
+- **The environment is captured at install time.** `mot daemon install` records the `node` binary, the `mot` CLI path, `MOT_CONFIG`, and (on macOS) your current `PATH` in the service file. If you later switch Node versions, move or reinstall `mot` somewhere else, or put `pi` in a new location on `PATH`, reinstall the service: `mot daemon uninstall`, wait a few seconds, then `mot daemon install && mot daemon start`. (On macOS, `install` fails with `Bootstrap failed: 5` while the service is still loaded or just being unloaded, so don't chain it right after `uninstall`.) For `pi`, you can instead set `PI_BIN` to an absolute path in `config.env`.
+- **Upgrading mot:** the running process keeps the old code until restarted — after `npm install -g @zephyrdeng/mot@latest`, run `mot daemon stop && mot daemon start`.
+- **Uninstalling:** `mot daemon uninstall` removes only the service file. Your config, database, and sessions stay where they are.
+- **One service per user account.** The service name is fixed (`mot` / `com.mot`), so one account can run one gateway service. To use several Slack apps, run them on separate machines or accounts (see [Running on more than one machine](#running-on-more-than-one-machine)).
+
 ## Configuration
 
 `mot setup` generates the config file for you; `mot status` shows its path (Linux: `~/.config/mot/config.env`, macOS: `~/Library/Application Support/mot/config.env`, Windows: `%APPDATA%\mot\config.env`). The `MOT_CONFIG` environment variable overrides the location. After changes, restart: `mot daemon stop && mot daemon start`.
 
-| Variable                     | Default                         | Description                                                                           |
-| ---------------------------- | ------------------------------- | ------------------------------------------------------------------------------------- |
-| `SLACK_BOT_TOKEN`            | _(required)_                    | Bot User OAuth Token (`xoxb-…`)                                                       |
-| `SLACK_APP_TOKEN`            | _(required)_                    | App-level token with `connections:write` for Socket Mode (`xapp-…`)                   |
-| `PI_BIN`                     | `pi`                            | Path to pi binary                                                                     |
-| `PI_MODEL`                   | _(none)_                        | Default model override                                                                |
-| `PI_THINKING`                | _(none)_                        | Default thinking level                                                                |
-| `PI_CWD`                     | `$HOME`                         | Default working directory for pi; can be overridden per registered channel            |
-| `PI_EXTRA_FLAGS`             | _(none)_                        | Extra flags passed to pi                                                              |
-| `TRIGGER_NAME`               | `mot`                           | Bot trigger name for summoning in channels                                            |
-| `CHANNEL_POLICY`             | `allowlist`                     | Channel access: `open`, `open-trigger`, or `allowlist`                                |
-| `PROJECT_ROOTS`              | `$HOME`                         | Comma-separated roots `/mot bind <name>` searches for `<root>/<name>`                 |
-| `ADMIN_USERS`                | _(none)_                        | Comma-separated Slack user IDs allowed to run `/mot bind` (empty disables it)         |
-| `EXCLUDED_CHANNELS`          | _(none)_                        | Comma-separated channel IDs to exclude from auto-registration                         |
-| `DM_POLICY`                  | `open`                          | DM access: `open`, `allowlist`, or `disabled`                                         |
-| `REPLY_IN_THREAD`            | `true`                          | Post responses into the triggering message's thread when it has one                   |
-| `ZENMUX_API_KEY`             | _(none)_                        | ZenMux API key for [voice transcription](#voice-messages); unset disables the feature |
-| `MAX_CONCURRENCY`            | `3`                             | Max parallel pi invocations                                                           |
-| `MAX_SCHEDULED_CONCURRENCY`  | `1`                             | Max scheduled tasks enqueued per tick                                                 |
-| `POLL_INTERVAL_MS`           | `1000`                          | Queue poll interval (ms)                                                              |
-| `SHUTDOWN_TIMEOUT_MS`        | `15000`                         | Graceful shutdown timeout (ms)                                                        |
-| `ARCHIVE_RETENTION_DAYS`     | `30`                            | Days to keep archived sessions (0 = never clean)                                      |
-| `MAX_ATTACHMENT_BYTES`       | `26214400`                      | Max size per attachment (0 = no limit)                                                |
-| `MAX_TOTAL_ATTACHMENT_BYTES` | `52428800`                      | Max combined attachment size per message (0 = no limit)                               |
-| `MEDIA_RETENTION_HOURS`      | `168`                           | Hours to keep downloaded attachment files for path-based agent access                 |
-| `SESSIONS_DIR`               | _(platform default)_/sessions   | Session storage directory                                                             |
-| `DB_PATH`                    | _(platform default)_/gateway.db | SQLite database path                                                                  |
-| `LOG_LEVEL`                  | `info`                          | Log level: debug/info/warn/error                                                      |
+| Variable                     | Default                         | Description                                                                            |
+| ---------------------------- | ------------------------------- | -------------------------------------------------------------------------------------- |
+| `SLACK_BOT_TOKEN`            | _(required)_                    | Bot User OAuth Token (`xoxb-…`)                                                        |
+| `SLACK_APP_TOKEN`            | _(required)_                    | App-level token with `connections:write` for Socket Mode (`xapp-…`)                    |
+| `PI_BIN`                     | `pi`                            | Path to pi binary                                                                      |
+| `PI_MODEL`                   | _(none)_                        | Default model override                                                                 |
+| `PI_THINKING`                | _(none)_                        | Default thinking level                                                                 |
+| `PI_CWD`                     | `$HOME`                         | Default working directory for pi; can be overridden per registered channel             |
+| `PI_EXTRA_FLAGS`             | _(none)_                        | Extra flags passed to pi                                                               |
+| `TRIGGER_NAME`               | `mot`                           | Bot trigger name for summoning in channels                                             |
+| `SLASH_COMMAND`              | `/mot`                          | Slash command to answer to; must match your Slack app's manifest (one app per machine) |
+| `INSTANCE_NAME`              | _(hostname)_                    | Label for this gateway in logs, `mot status`, and `/mot status`                        |
+| `CHANNEL_POLICY`             | `allowlist`                     | Channel access: `open`, `open-trigger`, or `allowlist`                                 |
+| `PROJECT_ROOTS`              | `$HOME`                         | Comma-separated roots `/mot bind <name>` searches for `<root>/<name>`                  |
+| `ADMIN_USERS`                | _(none)_                        | Comma-separated Slack user IDs allowed to run `/mot bind` (empty disables it)          |
+| `EXCLUDED_CHANNELS`          | _(none)_                        | Comma-separated channel IDs to exclude from auto-registration                          |
+| `DM_POLICY`                  | `open`                          | DM access: `open`, `allowlist`, or `disabled`                                          |
+| `REPLY_IN_THREAD`            | `true`                          | Post responses into the triggering message's thread when it has one                    |
+| `ZENMUX_API_KEY`             | _(none)_                        | ZenMux API key for [voice transcription](#voice-messages); unset disables the feature  |
+| `MAX_CONCURRENCY`            | `3`                             | Max parallel pi invocations                                                            |
+| `MAX_SCHEDULED_CONCURRENCY`  | `1`                             | Max scheduled tasks enqueued per tick                                                  |
+| `POLL_INTERVAL_MS`           | `1000`                          | Queue poll interval (ms)                                                               |
+| `SHUTDOWN_TIMEOUT_MS`        | `15000`                         | Graceful shutdown timeout (ms)                                                         |
+| `ARCHIVE_RETENTION_DAYS`     | `30`                            | Days to keep archived sessions (0 = never clean)                                       |
+| `MAX_ATTACHMENT_BYTES`       | `26214400`                      | Max size per attachment (0 = no limit)                                                 |
+| `MAX_TOTAL_ATTACHMENT_BYTES` | `52428800`                      | Max combined attachment size per message (0 = no limit)                                |
+| `MEDIA_RETENTION_HOURS`      | `168`                           | Hours to keep downloaded attachment files for path-based agent access                  |
+| `SESSIONS_DIR`               | _(platform default)_/sessions   | Session storage directory                                                              |
+| `DB_PATH`                    | _(platform default)_/gateway.db | SQLite database path                                                                   |
+| `LOG_LEVEL`                  | `info`                          | Log level: debug/info/warn/error                                                       |
 
 Data lives next to the config: `~/.local/share/mot/` on Linux, `~/Library/Application Support/mot/` on macOS, `%LOCALAPPDATA%\mot\` on Windows.
 
@@ -216,6 +253,8 @@ Data lives next to the config: `~/.local/share/mot/` on Linux, `~/Library/Applic
 
 ```
 mot setup [bot-token] [app-token]           Interactive setup wizard
+mot manifest [--name <n>] [--bot-name <n>] [--command </cmd>] [--out <file>]
+                                            Print a Slack app manifest (one app per machine)
 mot start                                   Start gateway (foreground)
 mot status                                  Show diagnostics
 
@@ -267,7 +306,8 @@ Channel jids are the Slack channel ID with an `sl:` prefix (e.g. `sl:C0123456789
 - `mot daemon status` — check for errors
 - `mot daemon logs` — see log output
 - **Linux**: for headless servers, run `sudo loginctl enable-linger $USER`
-- **macOS**: check `daemon.stdout.log` / `daemon.stderr.log` in the data directory
+- **macOS**: check `daemon.stdout.log` / `daemon.stderr.log` in the data directory (`mot daemon logs` only follows stdout)
+- Changed Node, moved `mot`, or `pi` is no longer found? Reinstall the service (`mot daemon uninstall`, wait a few seconds, `mot daemon install && mot daemon start`) — it keeps the paths from install time (see [What the service does](#what-the-service-does))
 
 </details>
 
