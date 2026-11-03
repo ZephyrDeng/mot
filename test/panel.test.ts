@@ -105,4 +105,17 @@ describe('buildPanelBlocks', () => {
     expect(findSelect(blocks, PANEL_ACTIONS.stop).confirm).toBeDefined();
     expect(findSelect(blocks, PANEL_ACTIONS.refresh).confirm).toBeUndefined();
   });
+
+  it('uses the configured slash command and instance in hints', () => {
+    const blocks = buildPanelBlocks(baseState({ slashCommand: '/motmac', instance: 'macbook' }));
+    const text = JSON.stringify(blocks);
+
+    expect(text).toContain('/motmac status');
+    expect(text).toContain('Instance: macbook');
+    expect(text).not.toContain('`/mot status');
+  });
+
+  it('falls back to /mot without a configured command', () => {
+    expect(JSON.stringify(buildPanelBlocks(baseState()))).toContain('`/mot status');
+  });
 });

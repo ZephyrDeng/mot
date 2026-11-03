@@ -1,6 +1,6 @@
 import { parse } from 'dotenv';
 import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, hostname } from 'node:os';
 import { isAbsolute, resolve } from 'node:path';
 
 const APP_DIR = 'mot';
@@ -150,6 +150,25 @@ function parseDmPolicy(value: string): DmPolicy {
   return 'open';
 }
 
+/** Slack slash command names: lowercase, no spaces, at most 32 chars including the slash. */
+const SLASH_COMMAND_PATTERN = /^\/[a-z0-9_-]{1,31}$/;
+
+/** Trim, lowercase, and make sure the command starts with "/" (`motmac` → `/motmac`). */
+export function normalizeSlashCommand(raw: string): string {
+  const value = raw.trim().toLowerCase();
+  if (!value) return '/mot';
+  return value.startsWith('/') ? value : `/${value}`;
+}
+
+/** Returns human-readable problems with a (normalized) slash command; empty when valid. */
+export function validateSlashCommand(command: string): string[] {
+  if (SLASH_COMMAND_PATTERN.test(command)) return [];
+  return [
+    `SLASH_COMMAND "${command}" is not a valid Slack slash command. ` +
+      'Use lowercase letters, digits, "-" or "_" (max 32 characters including the leading "/").',
+  ];
+}
+
 export const config = {
   /** Slack bot token, xoxb- prefix (required) */
   slackBotToken: env('SLACK_BOT_TOKEN'),
@@ -180,6 +199,16 @@ export const config = {
 
   /** Bot trigger name (default: bot's own display name) */
   triggerName: env('TRIGGER_NAME', 'mot'),
+
+  /**
+   * Slash command this gateway answers to (default: /mot). Must match the command
+   * declared in the Slack app (see `mot manifest --command`). Give each machine its
+   * own app + command so several gateways can share a workspace.
+   */
+  slashCommand: normalizeSlashCommand(env('SLASH_COMMAND', '/mot')),
+
+  /** Human label for this gateway (default: hostname), shown in logs and status output */
+  instanceName: env('INSTANCE_NAME') || hostname(),
 
   /** Max concurrent agent invocations */
   maxConcurrency: envInt('MAX_CONCURRENCY', 3, { min: 1 }),

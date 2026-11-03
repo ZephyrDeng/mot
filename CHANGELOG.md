@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- `mot manifest [--name] [--bot-name] [--command] [--out]` prints a Slack app manifest with a custom app name, bot name, and slash command, so each machine can run its own app in the same workspace
+- `SLASH_COMMAND` (default `/mot`): the slash command the gateway answers to, used by every hint, usage text, and the panel
+- `INSTANCE_NAME` (default: hostname), shown in the startup log, `mot status`, `/mot status`, and the `/mot` panel footer
+- `mot setup` shows which bot/workspace the token belongs to, asks whether the Slack app is already used by a gateway on another machine (and stops with instructions if so), and asks for the slash command; the trigger name defaults to the command name
+
+### Docs
+
+- New README section "Running on more than one machine": a Slack app can only feed one gateway, because Socket Mode splits events across connections and two gateways on one app silently lose messages
+
 ## [0.4.1] - 2026-11-02
 
 ### Fixed

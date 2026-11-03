@@ -1,4 +1,4 @@
-import { config, validateSlackTokens } from './config.js';
+import { config, validateSlackTokens, validateSlashCommand } from './config.js';
 import { logger } from './logger.js';
 import { initDb, closeDb, getAllChannels } from './db.js';
 import { startSlack, stopSlack, getBotTag } from './slack/client.js';
@@ -15,7 +15,10 @@ import { startScheduler } from './agent/scheduler.js';
  * Slack messages (Socket Mode) -> SQLite queue -> pi subprocess -> Slack response.
  */
 export async function startGateway(): Promise<void> {
-  const tokenProblems = validateSlackTokens(config);
+  const tokenProblems = [
+    ...validateSlackTokens(config),
+    ...validateSlashCommand(config.slashCommand),
+  ];
   if (tokenProblems.length > 0) {
     throw new Error(tokenProblems.join(' '));
   }
@@ -95,6 +98,8 @@ export async function startGateway(): Promise<void> {
     logger.info(
       {
         bot: getBotTag(),
+        instance: config.instanceName,
+        command: config.slashCommand,
         trigger: `@${config.triggerName}`,
         concurrency: config.maxConcurrency,
         scheduledConcurrency: config.maxScheduledConcurrency,

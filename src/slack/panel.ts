@@ -1,5 +1,5 @@
 /**
- * Block Kit control panel for the bare `/mot` command.
+ * Block Kit control panel for the bare slash command (`/mot` by default).
  *
  * Pure block builders — no I/O — so the layout is unit-testable. The slash
  * command and the block-action handlers in commands.ts assemble PanelState,
@@ -38,6 +38,10 @@ export interface PanelState {
   currentThinking: ThinkingLevel | '';
   /** One-line result of the action that triggered this re-render */
   notice?: string;
+  /** Slash command shown in hints (default: /mot) */
+  slashCommand?: string;
+  /** Gateway instance label (hostname by default), shown in the footer when set */
+  instance?: string;
 }
 
 /** Slack caps static_select at 100 options and option labels at 75 chars. */
@@ -78,7 +82,7 @@ export function buildPanelBlocks(state: PanelState): KnownBlock[] {
   }
   blocks.push(buildThinkingSelect(state));
   blocks.push(buildButtons());
-  blocks.push(footer());
+  blocks.push(footer(state));
 
   return blocks;
 }
@@ -97,6 +101,7 @@ function buildModelSelect(state: PanelState): ActionsBlock | null {
   const initial = options.find((option) => option.value === state.currentModelRef);
 
   const overflow = state.models.length - options.length;
+  const slash = state.slashCommand ?? '/mot';
   return {
     type: 'actions',
     elements: [
@@ -105,7 +110,8 @@ function buildModelSelect(state: PanelState): ActionsBlock | null {
         action_id: PANEL_ACTIONS.model,
         placeholder: {
           type: 'plain_text',
-          text: overflow > 0 ? `Switch model… (+${overflow} more via /mot model)` : 'Switch model…',
+          text:
+            overflow > 0 ? `Switch model… (+${overflow} more via ${slash} model)` : 'Switch model…',
         },
         options,
         ...(initial ? { initial_option: initial } : {}),
@@ -177,16 +183,18 @@ function buildButtons(): ActionsBlock {
   };
 }
 
-function footer(): ContextBlock {
-  return {
-    type: 'context',
-    elements: [
-      {
-        type: 'mrkdwn',
-        text: 'Text commands still work: `/mot status · model <ref> · models · reset-model · thinking <level> · new · stop`',
-      },
-    ],
-  };
+function footer(state: PanelState): ContextBlock {
+  const slash = state.slashCommand ?? '/mot';
+  const elements: ContextBlock['elements'] = [
+    {
+      type: 'mrkdwn',
+      text: `Text commands still work: \`${slash} status · model <ref> · models · reset-model · thinking <level> · new · stop\``,
+    },
+  ];
+  if (state.instance) {
+    elements.push({ type: 'mrkdwn', text: `Instance: ${state.instance}` });
+  }
+  return { type: 'context', elements };
 }
 
 function truncate(text: string, max: number): string {

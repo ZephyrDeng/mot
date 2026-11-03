@@ -85,7 +85,10 @@ export async function startSlack(): Promise<void> {
     throw err;
   }
 
-  logger.info({ tag: botTag, id: botUserId }, 'Slack bot connected');
+  logger.info(
+    { tag: botTag, id: botUserId, instance: config.instanceName, command: config.slashCommand },
+    'Slack bot connected',
+  );
 }
 
 async function handleMessage(event: InboundMessageEvent): Promise<void> {
@@ -361,7 +364,7 @@ async function sendUnregisteredNotice(
   await sendResponse(
     jid,
     `${where} not registered with the pi gateway, so messages here are ignored. ` +
-      `An admin can run \`/mot bind <dir>\` here, or on the gateway host:\n\`mot register ${channelId} "<name>"\``,
+      `An admin can run \`${config.slashCommand} bind <dir>\` here, or on the gateway host:\n\`mot register ${channelId} "<name>"\``,
     { threadTs },
   );
   logger.info({ jid }, 'Sent unregistered-channel notice');
