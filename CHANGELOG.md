@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 
 ### Docs
 
+- README "Running as a daemon": what the service does on each platform (service file locations, start and restart behavior, log locations), that the environment (`node`, `mot`, `PATH`) is captured at install time, restarting after an upgrade, what `uninstall` keeps, and the one-service-per-account limit
 - New README section "Running on more than one machine": a Slack app can only feed one gateway, because Socket Mode splits events across connections and two gateways on one app silently lose messages
 
 ## [0.4.1] - 2026-11-02

@@ -137,6 +137,8 @@ mot manifest --name "Mot MacBook" --command /motmac --out mot-macbook.yaml
 2. Run `mot setup` with the new tokens. It shows which bot and workspace the token belongs to, asks whether the app is already used on another machine, and asks for the slash command (it must match the manifest). It also defaults `TRIGGER_NAME` to the command name, so `@motmac` / `motmac …` reaches the right machine.
 3. Or set it by hand in `config.env`: `SLASH_COMMAND=/motmac`, `TRIGGER_NAME=motmac`.
 
+The background service is named `mot` (`com.mot` on macOS), so one user account can run only one gateway service — another reason to keep one app per machine. See [What the service does](#what-the-service-does).
+
 `mot status`, the gateway's startup log, `/mot status`, and the `/mot` panel all show the **instance name** (`INSTANCE_NAME`, default: the machine's hostname), so you can tell which machine answered.
 
 ## Access control
@@ -194,6 +196,21 @@ mot daemon install | start | status | logs | stop | uninstall
 - **Windows** — no daemon management yet; run `mot start` in a terminal or use Task Scheduler
 
 Run **exactly one** gateway instance per Slack app — Socket Mode load-balances events across connections, so a second instance silently takes half your messages.
+
+### What the service does
+
+|                          | Linux (systemd user service `mot`)           | macOS (launchd user agent `com.mot`)                                               |
+| ------------------------ | -------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Service file             | `~/.config/systemd/user/mot.service`         | `~/Library/LaunchAgents/com.mot.plist`                                             |
+| Starts                   | With your user session (`default.target`)    | When you log in (it is not a boot-time daemon)                                     |
+| After a crash            | Restarted (`Restart=on-failure`), 10 s apart | Restarted after a non-zero exit (`KeepAlive`), at least 10 s apart                 |
+| Logs (`mot daemon logs`) | `journalctl --user -u mot` (followed)        | `daemon.stdout.log` in the data directory (followed)                               |
+| Error output             | Same journal                                 | `daemon.stderr.log` in the data directory — `mot daemon logs` does **not** show it |
+
+- **The environment is captured at install time.** `mot daemon install` records the `node` binary, the `mot` CLI path, `MOT_CONFIG`, and (on macOS) your current `PATH` in the service file. If you later switch Node versions, move or reinstall `mot` somewhere else, or put `pi` in a new location on `PATH`, reinstall the service: `mot daemon uninstall`, wait a few seconds, then `mot daemon install && mot daemon start`. (On macOS, `install` fails with `Bootstrap failed: 5` while the service is still loaded or just being unloaded, so don't chain it right after `uninstall`.) For `pi`, you can instead set `PI_BIN` to an absolute path in `config.env`.
+- **Upgrading mot:** the running process keeps the old code until restarted — after `npm install -g @zephyrdeng/mot@latest`, run `mot daemon stop && mot daemon start`.
+- **Uninstalling:** `mot daemon uninstall` removes only the service file. Your config, database, and sessions stay where they are.
+- **One service per user account.** The service name is fixed (`mot` / `com.mot`), so one account can run one gateway service. To use several Slack apps, run them on separate machines or accounts (see [Running on more than one machine](#running-on-more-than-one-machine)).
 
 ## Configuration
 
@@ -289,7 +306,8 @@ Channel jids are the Slack channel ID with an `sl:` prefix (e.g. `sl:C0123456789
 - `mot daemon status` — check for errors
 - `mot daemon logs` — see log output
 - **Linux**: for headless servers, run `sudo loginctl enable-linger $USER`
-- **macOS**: check `daemon.stdout.log` / `daemon.stderr.log` in the data directory
+- **macOS**: check `daemon.stdout.log` / `daemon.stderr.log` in the data directory (`mot daemon logs` only follows stdout)
+- Changed Node, moved `mot`, or `pi` is no longer found? Reinstall the service (`mot daemon uninstall`, wait a few seconds, `mot daemon install && mot daemon start`) — it keeps the paths from install time (see [What the service does](#what-the-service-does))
 
 </details>
 
